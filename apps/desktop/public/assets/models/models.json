@@ -4,11 +4,8 @@
       "id": "jian",
       "name": "Jian",
       "path": "/Resources/Jian/Jian.model3.json",
-      "window": { "width": 1000, "height": 900 },
-      "canvas": { "width": 1000, "height": 900 },
-      "offset": { "x": 0, "y": 0 },
-      "padding": 32,
-      "scale": 0.96,
+      "window": { "width": 500, "height": 450 },
+      "canvas": { "width": 500, "height": 450 },
       "actions": {
         "idle": { "motion": { "group": "Idle", "index": 0 } },
         "thinking": { "motion": { "group": "Idle", "index": 0 }, "expression": "StarEyes" },

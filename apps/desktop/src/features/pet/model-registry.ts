@@ -10,12 +10,6 @@ export interface ModelConfig {
     width: number;
     height: number;
   };
-  offset?: {
-    x?: number;
-    y?: number;
-  };
-  padding?: number;
-  scale?: number;
   actions?: Record<string, ModelActionConfig>;
 }
 
@@ -39,9 +33,6 @@ export const FALLBACK_MODELS: ModelConfig[] = [
     path: 'Resources/Jian/Jian.model3.json',
     window: { width: 1000, height: 900 },
     canvas: { width: 1000, height: 900 },
-    offset: { x: 0, y: 0 },
-    padding: 32,
-    scale: 0.96,
     actions: {
       idle: { motion: { group: 'Idle', index: 0 } },
       thinking: { motion: { group: 'Idle', index: 0 }, expression: 'StarEyes' },

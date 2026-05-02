@@ -1,110 +1,95 @@
-# HermesDeskPet
+# ViviPet
 
-A self-evolving desktop pet powered by Hermes Agent.
+A universal AI-driven desktop companion that brings Live2D characters to life.
+External agents control the character through a simple action API — triggering expressions, motions, speech bubbles, and eventually TTS — turning every notification into an expressive, visual moment.
 
 ## Tech Stack
 
-- **Electron** - Desktop window management
-- **React + TypeScript** - UI rendering
-- **Live2D Cubism SDK** - Character animation via pixi-live2d-display
-- **EventSource (SSE)** - Direct Hermes Gateway communication
+- **Electron** — Desktop window management
+- **React + TypeScript** — UI rendering
+- **Live2D Cubism SDK (Cubism 5)** — Character animation
+- **EventSource (SSE)** — Real-time agent communication
 
 ## Features
 
 - Transparent, always-on-top desktop pet window
-- Live2D character with multiple animations
-- Hermes Agent event-driven reactions (direct SSE connection)
-- Action DSL for custom behaviors
+- Live2D character with rich expressions and motions
+- Agent-driven reactions via SSE or HTTP API
 - System tray integration
 - Mouse passthrough mode
-
-## Prerequisites
-
-1. **Hermes Agent CLI** running with gateway on port 8642
-   ```bash
-   hermes gateway run
-   # or
-   hermes gateway start
-   ```
-
-2. **Live2D Model** - Download from Live2D Cubism SDK or create your own
 
 ## Quick Start
 
 ```bash
-cd hermes-deskpet/apps/desktop
+cd apps/desktop
 npm install
+npm run dev      # development mode
+```
+
+Or for production:
+
+```bash
 npm run build
 npm start
 ```
 
-## Hermes Gateway Connection
+## Action API
 
-HermesDeskPet connects **directly** to Hermes Gateway via SSE (Server-Sent Events):
+External agents interact with ViviPet by dispatching actions — whether through the built-in SSE client, the event bridge, or directly calling the exposed API.
 
-```
-HermesDeskPet ────────── SSE ──────────> Hermes Gateway (:8642)
-```
-
-**Endpoints used:**
-- `POST /v1/runs` - Create a run
-- `GET /v1/runs/{runId}/events` - SSE event stream
-
-**Authentication:** Uses `API_SERVER_KEY` from profile's `.env` file.
+| Action      | Effect                     |
+|-------------|----------------------------|
+| `idle`      | Default idle animation     |
+| `thinking`  | Starry eyes expression     |
+| `speaking`  | Blush expression + bubble  |
+| `happy`     | Heart eyes expression      |
+| `success`   | Starry eyes expression     |
+| `error`     | Dark face expression       |
+| `confused`  | White eyes expression      |
+| `angry`     | Angry expression           |
+| `searching` | Starry eyes                |
+| `reading`   | Right hand pose            |
+| `coding`    | Left hand pose             |
+| `terminal`  | White eyes expression      |
 
 ## Adding a Live2D Model
 
-1. Download Live2D Cubism SDK from https://www.live2d.com/cubism-sdk/download/
-2. Get a model file (`.model3.json`) and texture files
-3. Place the model folder in `apps/desktop/assets/models/your-model/`
-4. Add an entry to `apps/desktop/assets/models/models.json`:
+1. Obtain a Live2D Cubism model (`.model3.json`, `.moc3`, textures, physics, motions)
+2. Place the model folder in `public/Resources/your-model/`
+3. Add an entry to `public/assets/models/models.json`:
    ```json
    {
      "id": "your-model",
      "name": "Your Model",
-     "path": "./models/your-model/your-model.model3.json",
+     "path": "/Resources/your-model/your-model.model3.json",
      "window": { "width": 520, "height": 760 },
-     "canvas": { "width": 520, "height": 760 },
-     "offset": { "x": 0, "y": 0 },
-     "padding": 24,
-     "scale": 0.9
+     "canvas": { "width": 520, "height": 760 }
    }
    ```
-5. Tune `window`, `canvas`, `offset`, `padding`, and `scale` if the model is clipped or too small.
-6. Restart the desktop app. The model will appear in the right-click model switcher.
-
-## Hermes Events → Pet Actions
-
-| Gateway SSE Event | Pet Action |
-|------------------|------------|
-| `run.started` | idle |
-| `reasoning.delta` / `thinking.delta` | thinking |
-| `message.delta` | speaking |
-| `tool.started` | coding/searching/reading/terminal |
-| `tool.completed` | happy / confused |
-| `run.completed` | task_done |
-| `run.failed` | error |
+4. Restart the app. The model will appear in the right-click model switcher.
 
 ## Architecture
 
 ```
-┌────────────────────────────────────┐
-│        HermesDeskPet                  │
-│   EventSource (SSE) Client          │
-└───────────────┬────────────────────┘
-                │ SSE
-                ▼
-┌────────────────────────────────────┐
-│      Hermes Gateway (:8642)         │
-│  POST /v1/runs                     │
-│  GET  /v1/runs/{id}/events        │
-└───────────────┬────────────────────┘
-                │
-                ▼
-┌────────────────────────────────────┐
-│        Hermes Agent                  │
-└────────────────────────────────────┘
+┌──────────────────────────────┐
+│        ViviPet               │
+│  Live2D Renderer             │
+│  Action Dispatcher           │
+│  SSE / IPC / Bridge Client   │
+└──────────┬───────────────────┘
+           │ actions (motion, expression, bubble, …)
+           ▼
+┌──────────────────────────────┐
+│     External Agent           │
+│  (Hermes, Copilot, custom)   │
+└──────────────────────────────┘
 ```
+
+ViviPet exposes an action dispatch system that can be triggered via:
+- **SSE** — Connect directly to any event stream
+- **Event Bridge** — HTTP endpoint on port `18765` (`POST /event`)
+- **IPC** — From Electron main process
+- **API** — Exposed action interface for programmatic control
 
 ## License
 

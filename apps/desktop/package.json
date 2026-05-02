@@ -1,7 +1,7 @@
 {
-  "name": "@hermes/deskpet-electron",
+  "name": "vivi-pet",
   "version": "0.1.0",
-  "description": "Electron desktop pet application",
+  "description": "AI-driven Live2D desktop companion",
   "author": "Hermes Team",
   "main": "dist/main/main.js",
   "scripts": {
@@ -16,9 +16,7 @@
     "package": "npm run build && electron-builder --mac --publish never"
   },
   "dependencies": {
-    "electron-log": "^5.1.7",
-    "electron-store": "^8.2.0",
-    "socket.io-client": "^4.8.3"
+    "electron-log": "^5.1.7"
   },
   "devDependencies": {
     "@types/node": "^20.14.2",
