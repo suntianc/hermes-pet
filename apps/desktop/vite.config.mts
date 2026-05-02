@@ -14,9 +14,8 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, 'src'),
       '@framework': path.resolve(__dirname, 'src/vendor/cubism'),
-      '@hermes/pet-action-dsl': path.resolve(__dirname, '../../packages/pet-action-dsl/src'),
-      '@hermes/hermes-adapter': path.resolve(__dirname, '../../packages/hermes-adapter/src'),
-      '@hermes/shared': path.resolve(__dirname, '../../packages/shared/src'),
+      '@pet-action-dsl': path.resolve(__dirname, '../../packages/pet-action-dsl/src'),
+      '@shared': path.resolve(__dirname, '../../packages/shared/src'),
     },
   },
   server: {

@@ -2,7 +2,6 @@ import { PetRenderer } from '../pet/PetRenderer';
 import { FALLBACK_MODELS } from '../pet/model-registry';
 import { ActionRegistryImpl, ActionType } from './action-registry';
 import { ActionDefinition } from './action-schema';
-import { HermesPetEvent } from '../hermes/hermes-events';
 
 export class ActionDispatcher {
   private renderer: PetRenderer;
@@ -53,23 +52,6 @@ export class ActionDispatcher {
       const nextAction = this.actionQueue.shift()!;
       await this.executeAction(nextAction);
     }
-  }
-
-  dispatchFromHermesEvent(event: HermesPetEvent): void {
-    const eventToAction: Record<string, ActionType> = {
-      idle: 'idle',
-      thinking: 'thinking',
-      speaking: 'speaking',
-      tool_start: 'coding',
-      tool_success: 'happy',
-      tool_error: 'confused',
-      task_done: 'success',
-      need_confirmation: 'thinking',
-      error: 'error',
-    };
-
-    const actionName = eventToAction[event.type] || 'idle';
-    this.dispatch(actionName);
   }
 
   getCurrentAction(): string {

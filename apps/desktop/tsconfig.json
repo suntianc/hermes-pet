@@ -16,9 +16,8 @@
     "paths": {
       "@/*": ["src/*"],
       "@framework/*": ["src/vendor/cubism/*"],
-      "@hermes/pet-action-dsl": ["../../packages/pet-action-dsl/src"],
-      "@hermes/hermes-adapter": ["../../packages/hermes-adapter/src"],
-      "@hermes/shared": ["../../packages/shared/src"]
+      "@pet-action-dsl": ["../../packages/pet-action-dsl/src"],
+      "@shared": ["../../packages/shared/src"]
     }
   },
   "include": ["src/**/*"],

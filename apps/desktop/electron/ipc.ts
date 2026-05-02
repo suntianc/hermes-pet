@@ -148,15 +148,5 @@ export function registerIpcHandlers(): void {
     }
   });
 
-  // Hermes event forwarding
-  ipcMain.on('hermes:send', (_event, eventName: string, data?: unknown) => {
-    log.info(`Hermes event sent: ${eventName}`, data);
-    // Forward to renderer
-    const win = getPetWindow();
-    if (win) {
-      win.webContents.send('hermes:event', eventName, data);
-    }
-  });
-
   log.info('IPC handlers registered');
 }

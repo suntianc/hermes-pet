@@ -24,17 +24,9 @@ export interface PetTrayAPI {
   setToolTip: (tooltip: string) => void;
 }
 
-export interface HermesAPI {
-  sendEvent: (event: string, data?: unknown) => void;
-  onEvent: (callback: (event: string, data: unknown) => void) => () => void;
-  connect: (url: string) => void;
-  disconnect: () => void;
-}
-
 export interface ElectronAPI {
   petWindow: PetWindowAPI;
   petTray: PetTrayAPI;
-  hermes: HermesAPI;
   onPetAction: (callback: (action: string, params?: unknown) => void) => () => void;
 }
 
@@ -64,18 +56,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   petTray: {
     setIcon: (iconPath: string) => ipcRenderer.send('pet:tray:setIcon', iconPath),
     setToolTip: (tooltip: string) => ipcRenderer.send('pet:tray:setToolTip', tooltip),
-  },
-
-  // Hermes connection
-  hermes: {
-    sendEvent: (event: string, data?: unknown) => ipcRenderer.send('hermes:send', event, data),
-    onEvent: (callback: (event: string, data: unknown) => void) => {
-      const handler = (_event: IpcRendererEvent, event: string, data: unknown) => callback(event, data);
-      ipcRenderer.on('hermes:event', handler);
-      return () => ipcRenderer.removeListener('hermes:event', handler);
-    },
-    connect: (url: string) => ipcRenderer.send('hermes:connect', url),
-    disconnect: () => ipcRenderer.send('hermes:disconnect'),
   },
 
   // Pet action triggers (from renderer to main)

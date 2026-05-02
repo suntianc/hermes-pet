@@ -29,8 +29,8 @@
     "vite": "^5.3.1"
   },
   "build": {
-    "appId": "com.hermes.deskpet",
-    "productName": "HermesDeskPet",
+    "appId": "com.vivipet.app",
+    "productName": "ViviPet",
     "directories": {
       "output": "release"
     },

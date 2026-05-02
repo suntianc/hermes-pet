@@ -22,7 +22,7 @@ export function createTray(petWindow: BrowserWindow): Tray {
   }
 
   tray = new Tray(icon);
-  tray.setToolTip('Hermes DeskPet');
+  tray.setToolTip('ViviPet');
 
   const contextMenu = Menu.buildFromTemplate([
     {

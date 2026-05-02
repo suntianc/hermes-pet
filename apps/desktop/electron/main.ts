@@ -8,7 +8,7 @@ import { startEventBridge, stopEventBridge } from './event-bridge';
 // Configure logging
 log.transports.file.level = 'info';
 log.transports.console.level = 'debug';
-log.info('HermesDeskPet starting...');
+log.info('ViviPet starting...');
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
@@ -47,7 +47,7 @@ app.whenReady().then(async () => {
     registerIpcHandlers();
     startEventBridge(getPetWindow);
 
-    log.info('HermesDeskPet initialized successfully');
+    log.info('ViviPet initialized successfully');
   } catch (error) {
     log.error('Failed to initialize:', error);
     app.exit(1);
