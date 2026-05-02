@@ -1,0 +1,94 @@
+{
+  "actions": [
+    {
+      "name": "idle",
+      "motion": { "group": "idle", "index": 0 },
+      "loop": true
+    },
+    {
+      "name": "thinking",
+      "motion": { "group": "thinking", "index": 0 },
+      "loop": true
+    },
+    {
+      "name": "speaking",
+      "motion": { "group": "speaking", "index": 0 }
+    },
+    {
+      "name": "happy",
+      "motion": { "group": "happy", "index": 0 },
+      "expression": "happy"
+    },
+    {
+      "name": "angry",
+      "motion": { "group": "angry", "index": 0 },
+      "expression": "angry"
+    },
+    {
+      "name": "confused",
+      "motion": { "group": "confused", "index": 0 },
+      "expression": "confused"
+    },
+    {
+      "name": "surprised",
+      "motion": { "group": "surprised", "index": 0 },
+      "expression": "surprised"
+    },
+    {
+      "name": "searching",
+      "motion": { "group": "searching", "index": 0 },
+      "loop": true
+    },
+    {
+      "name": "reading",
+      "motion": { "group": "reading", "index": 0 },
+      "loop": true
+    },
+    {
+      "name": "coding",
+      "motion": { "group": "coding", "index": 0 },
+      "loop": true
+    },
+    {
+      "name": "terminal",
+      "motion": { "group": "terminal", "index": 0 },
+      "loop": true
+    },
+    {
+      "name": "success",
+      "motion": { "group": "success", "index": 0 },
+      "expression": "happy"
+    },
+    {
+      "name": "error",
+      "motion": { "group": "error", "index": 0 },
+      "expression": "sad"
+    },
+    {
+      "name": "sleep",
+      "motion": { "group": "sleep", "index": 0 },
+      "loop": true
+    },
+    {
+      "name": "wake",
+      "motion": { "group": "wake", "index": 0 }
+    },
+    {
+      "name": "dragging",
+      "motion": { "group": "dragging", "index": 0 },
+      "loop": true
+    },
+    {
+      "name": "clicked",
+      "motion": { "group": "clicked", "index": 0 }
+    },
+    {
+      "name": "doubleClicked",
+      "motion": { "group": "doubleClicked", "index": 0 }
+    },
+    {
+      "name": "rightClickMenu",
+      "motion": { "group": "rightClickMenu", "index": 0 }
+    }
+  ]
+}

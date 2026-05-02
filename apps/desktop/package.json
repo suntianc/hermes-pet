@@ -1,0 +1,61 @@
+{
+  "name": "@hermes/deskpet-electron",
+  "version": "0.1.0",
+  "description": "Electron desktop pet application",
+  "author": "Hermes Team",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
+    "dev:main": "tsc -p tsconfig.main.json --watch",
+    "dev:renderer": "vite",
+    "build": "npm run build:main && npm run build:renderer",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:renderer": "vite build",
+    "start": "electron .",
+    "lint": "eslint src --ext .ts,.tsx",
+    "package": "npm run build && electron-builder --mac --publish never"
+  },
+  "dependencies": {
+    "@ai-zen/live2d-core": "^1.0.2",
+    "electron-log": "^5.1.7",
+    "electron-store": "^8.2.0",
+    "pixi-live2d-display": "^0.4.0",
+    "pixi.js": "^6.5.10",
+    "socket.io-client": "^4.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "concurrently": "^8.2.2",
+    "electron": "^31.1.0",
+    "electron-builder": "^24.13.3",
+    "typescript": "^5.5.2",
+    "vite": "^5.3.1"
+  },
+  "build": {
+    "appId": "com.hermes.deskpet",
+    "productName": "HermesDeskPet",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "assets/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ],
+    "electronDist": "node_modules/electron/dist",
+    "electronVersion": "31.1.0",
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dir"
+      ]
+    }
+  }
+}

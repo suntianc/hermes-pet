@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+release/
+apps/dist/
+apps/desktop/dist/
+apps/desktop/release/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local environment
+.env
+.env.*
+
+# Editor state
+.idea/
+.vscode/

@@ -1,0 +1,26 @@
+{
+	"Version": 3,
+	"FileReferences": {
+		"Moc": "邦布-水印.moc3",
+		"Textures": [
+			"texture_00.png",
+			"texture_01.png",
+			"texture_02.png",
+			"texture_03.png",
+			"texture_04.png"
+		],
+		"Physics": "邦布-水印.physics3.json"
+	},
+	"Groups": [
+		{
+			"Target": "Parameter",
+			"Name": "EyeBlink",
+			"Ids": []
+		},
+		{
+			"Target": "Parameter",
+			"Name": "LipSync",
+			"Ids": []
+		}
+	]
+}

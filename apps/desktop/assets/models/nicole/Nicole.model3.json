@@ -1,0 +1,23 @@
+{
+	"Version": 3,
+	"FileReferences": {
+		"Moc": "Nicole.moc3",
+		"Textures": [
+			"texture_00.png",
+			"texture_01.png"
+		],
+		"Physics": "Nicole.physics3.json"
+	},
+	"Groups": [
+		{
+			"Target": "Parameter",
+			"Name": "LipSync",
+			"Ids": []
+		},
+		{
+			"Target": "Parameter",
+			"Name": "EyeBlink",
+			"Ids": []
+		}
+	]
+}
