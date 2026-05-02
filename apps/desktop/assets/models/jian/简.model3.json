@@ -5,7 +5,24 @@
 		"Textures": [
 			"texture_00.png"
 		],
-		"Physics": "简.physics3.json"
+		"Physics": "简.physics3.json",
+		"Motions": {
+			"Idle": [
+				{ "File": "Scene1.motion3.json" }
+			]
+		},
+		"Expressions": [
+			{ "Name": "angry", "File": "生气.exp3.json" },
+			{ "Name": "white-eye", "File": "白眼.exp3.json" },
+			{ "Name": "tear", "File": "泪.exp3.json" },
+			{ "Name": "dark-face", "File": "脸黑.exp3.json" },
+			{ "Name": "love-eye", "File": "爱心眼.exp3.json" },
+			{ "Name": "right-hand", "File": "右手.exp3.json" },
+			{ "Name": "star-eye", "File": "星星眼.exp3.json" },
+			{ "Name": "blood", "File": "血.exp3.json" },
+			{ "Name": "left-hand", "File": "左手.exp3.json" },
+			{ "Name": "blush", "File": "脸红.exp3.json" }
+		]
 	},
 	"Groups": [
 		{

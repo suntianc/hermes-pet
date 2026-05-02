@@ -3,6 +3,7 @@ import { ActionType } from '../features/actions/action-schema';
 
 interface PetState {
   currentAction: ActionType;
+  actionRevision: number;
   bubbleText: string;
   bubbleDuration: number;
   isContextMenuOpen: boolean;
@@ -13,6 +14,7 @@ interface PetState {
 
 const initialState: PetState = {
   currentAction: 'idle',
+  actionRevision: 0,
   bubbleText: '',
   bubbleDuration: 3000,
   isContextMenuOpen: false,
@@ -44,11 +46,13 @@ class PetStore {
 
   setAction(action: ActionType): void {
     this.state.currentAction = action;
+    this.state.actionRevision += 1;
     this.notify();
   }
 
   triggerAction(action: ActionType): void {
     this.state.currentAction = action;
+    this.state.actionRevision += 1;
     this.notify();
   }
 

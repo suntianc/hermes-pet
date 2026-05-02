@@ -16,6 +16,16 @@ export interface ModelConfig {
   };
   padding?: number;
   scale?: number;
+  actions?: Record<string, ModelActionConfig>;
+}
+
+export interface ModelActionConfig {
+  motion?: {
+    group: string;
+    index?: number;
+  };
+  expression?: string;
+  resetExpressionAfterMs?: number;
 }
 
 interface ModelRegistryFile {
@@ -24,18 +34,40 @@ interface ModelRegistryFile {
 
 export const FALLBACK_MODELS: ModelConfig[] = [
   {
-    id: 'meruru',
-    name: 'Meruru',
-    path: './models/meruru/Meruru - Model - Mark.model3.json',
-    window: { width: 520, height: 760 },
-    canvas: { width: 520, height: 760 },
+    id: 'jian',
+    name: 'Jian',
+    path: 'Resources/Jian/Jian.model3.json',
+    window: { width: 1000, height: 900 },
+    canvas: { width: 1000, height: 900 },
     offset: { x: 0, y: 0 },
-    padding: 24,
-    scale: 0.9,
+    padding: 32,
+    scale: 0.96,
+    actions: {
+      idle: { motion: { group: 'Idle', index: 0 } },
+      thinking: { motion: { group: 'Idle', index: 0 }, expression: 'StarEyes' },
+      speaking: { motion: { group: 'Idle', index: 0 }, expression: 'Blush' },
+      happy: { motion: { group: 'Idle', index: 0 }, expression: 'HeartEyes' },
+      success: { motion: { group: 'Idle', index: 0 }, expression: 'StarEyes' },
+      error: { motion: { group: 'Idle', index: 0 }, expression: 'DarkFace' },
+      confused: { motion: { group: 'Idle', index: 0 }, expression: 'WhiteEyes' },
+      angry: { motion: { group: 'Idle', index: 0 }, expression: 'Angry' },
+      searching: { motion: { group: 'Idle', index: 0 }, expression: 'StarEyes' },
+      reading: { motion: { group: 'Idle', index: 0 }, expression: 'RightHand' },
+      coding: { motion: { group: 'Idle', index: 0 }, expression: 'LeftHand' },
+      terminal: { motion: { group: 'Idle', index: 0 }, expression: 'WhiteEyes' },
+      dragging: { motion: { group: 'Idle', index: 0 }, expression: 'Blush' },
+      clicked: { motion: { group: 'Idle', index: 0 }, expression: 'Blush', resetExpressionAfterMs: 700 },
+      doubleClicked: { motion: { group: 'Idle', index: 0 }, expression: 'HeartEyes', resetExpressionAfterMs: 1000 },
+    },
   },
 ];
 
-const MODEL_REGISTRY_PATH = './models/models.json';
+const MODEL_REGISTRY_PATH = 'assets/models/models.json';
+
+function resolvePublicAsset(path: string): string {
+  const cleanPath = path.replace(/^\.\//, '').replace(/^\//, '');
+  return window.location.protocol === 'file:' ? `./${cleanPath}` : `/${cleanPath}`;
+}
 
 function isValidModelConfig(model: Partial<ModelConfig>): model is ModelConfig {
   return Boolean(model.id && model.name && model.path);
@@ -51,7 +83,7 @@ export function getModelCanvasSize(model: ModelConfig): { width: number; height:
 
 export async function loadModelConfigs(): Promise<ModelConfig[]> {
   try {
-    const response = await fetch(MODEL_REGISTRY_PATH, { cache: 'no-cache' });
+    const response = await fetch(resolvePublicAsset(MODEL_REGISTRY_PATH), { cache: 'no-cache' });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }

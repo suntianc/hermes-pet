@@ -40,16 +40,7 @@ export class ActionDispatcher {
     this.isExecuting = true;
     this.currentAction = action.name;
 
-    if (action.motion) {
-      await this.renderer.playMotion(
-        action.motion.group,
-        action.motion.index
-      );
-    }
-
-    if (action.expression) {
-      await this.renderer.setExpression(action.expression);
-    }
+    await this.renderer.playAction(action.name);
 
     if (action.duration && !action.loop) {
       await this.delay(action.duration);

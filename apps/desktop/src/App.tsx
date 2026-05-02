@@ -1,9 +1,10 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { PetStage } from './components/PetStage';
 import { SpeechBubble } from './components/SpeechBubble';
 import { PetContextMenu } from './components/PetContextMenu';
 import { HermesClient } from './features/hermes/hermes-client';
 import { EventInterpreter } from './features/hermes/event-interpreter';
+import { HermesPetEvent } from './features/hermes/hermes-events';
 import { usePetStore } from './stores/pet-store';
 import { ActionType } from './features/actions/action-schema';
 import { loadModelConfigs, ModelConfig } from './features/pet/model-registry';
@@ -17,8 +18,10 @@ const App: React.FC = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [modelIndex, setModelIndex] = useState(0);
   const [models, setModels] = useState<ModelConfig[]>([]);
+  const actionResetTimerRef = useRef<number | null>(null);
   const {
     currentAction,
+    actionRevision,
     bubbleText,
     bubbleDuration,
     isContextMenuOpen,
@@ -29,6 +32,91 @@ const App: React.FC = () => {
     openContextMenu,
     closeContextMenu,
   } = usePetStore();
+
+  const clearActionResetTimer = useCallback(() => {
+    if (actionResetTimerRef.current !== null) {
+      window.clearTimeout(actionResetTimerRef.current);
+      actionResetTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleIdle = useCallback((delay: number, afterIdle?: () => void) => {
+    clearActionResetTimer();
+    actionResetTimerRef.current = window.setTimeout(() => {
+      actionResetTimerRef.current = null;
+      setAction('idle');
+      afterIdle?.();
+    }, delay);
+  }, [clearActionResetTimer, setAction]);
+
+  const handleHermesEvent = useCallback((event: HermesPetEvent, source: 'gateway' | 'bridge' = 'gateway') => {
+    const interpreted = eventInterpreter.interpret(event);
+    clearActionResetTimer();
+    const setContinuousAction = (action: ActionType) => {
+      if (currentAction !== action) {
+        setAction(action);
+      }
+    };
+    const showBridgeEvent = (label: string) => {
+      if (source === 'bridge') {
+        showBubble(label, 1200);
+      }
+    };
+
+    switch (interpreted.type) {
+      case 'idle':
+        console.log('[App] idle event, currentAction in closure:', currentAction);
+        setContinuousAction('idle');
+        showBridgeEvent('Idle');
+        break;
+      case 'thinking':
+        console.log('[App] thinking event, currentAction in closure:', currentAction);
+        setContinuousAction('thinking');
+        showBridgeEvent('Thinking...');
+        break;
+      case 'speaking':
+        console.log('[App] speaking event, currentAction in closure:', currentAction);
+        setContinuousAction('speaking');
+        if (interpreted.text) {
+          showBubble(interpreted.text, 5000);
+        } else {
+          showBridgeEvent('Speaking');
+        }
+        break;
+      case 'tool_start':
+        console.log('[App] tool_start event, currentAction in closure:', currentAction, 'tool:', interpreted.tool);
+        if (interpreted.tool === 'searching') {
+          setContinuousAction('searching');
+        } else if (interpreted.tool === 'reading') {
+          setContinuousAction('reading');
+        } else if (interpreted.tool === 'terminal') {
+          setContinuousAction('terminal');
+        } else {
+          setContinuousAction('coding');
+        }
+        showBridgeEvent(`Tool: ${interpreted.tool || 'coding'}`);
+        break;
+      case 'tool_success':
+        setAction('success');
+        showBubble('Done!', 2000);
+        scheduleIdle(2000);
+        break;
+      case 'tool_error':
+        setAction('error');
+        showBubble(interpreted.error || 'Error occurred', 3000);
+        scheduleIdle(3000);
+        break;
+      case 'task_done':
+        setAction('happy');
+        showBubble(interpreted.summary || 'Task completed!', 3000);
+        scheduleIdle(3000, hideBubble);
+        break;
+      case 'error':
+        setAction('error');
+        showBubble(interpreted.message, 3000);
+        break;
+    }
+  }, [clearActionResetTimer, currentAction, hideBubble, scheduleIdle, setAction, showBubble]);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,83 +135,42 @@ const App: React.FC = () => {
   useEffect(() => {
     hermesClient.connect(GATEWAY_URL);
 
-    const unsubscribe = hermesClient.onEvent((event) => {
-      const interpreted = eventInterpreter.interpret(event);
-
-      switch (interpreted.type) {
-        case 'idle':
-          setAction('idle');
-          break;
-        case 'thinking':
-          setAction('thinking');
-          break;
-        case 'speaking':
-          setAction('speaking');
-          if (interpreted.text) {
-            showBubble(interpreted.text, 5000);
-          }
-          break;
-        case 'tool_start':
-          if (interpreted.tool === 'searching') {
-            setAction('searching');
-          } else if (interpreted.tool === 'reading') {
-            setAction('reading');
-          } else if (interpreted.tool === 'terminal') {
-            setAction('terminal');
-          } else {
-            setAction('coding');
-          }
-          break;
-        case 'tool_success':
-          setAction('success');
-          showBubble('Done!', 2000);
-          setTimeout(() => setAction('idle'), 2000);
-          break;
-        case 'tool_error':
-          setAction('error');
-          showBubble(interpreted.error || 'Error occurred', 3000);
-          setTimeout(() => setAction('idle'), 3000);
-          break;
-        case 'task_done':
-          setAction('happy');
-          showBubble(interpreted.summary || 'Task completed!', 3000);
-          setTimeout(() => {
-            setAction('idle');
-            hideBubble();
-          }, 3000);
-          break;
-        case 'error':
-          setAction('error');
-          showBubble(interpreted.message, 3000);
-          break;
-      }
+    const unsubscribe = hermesClient.onEvent((event) => handleHermesEvent(event, 'gateway'));
+    const unsubscribeIpc = window.electronAPI?.hermes.onEvent((eventName, data) => {
+      handleHermesEvent({ ...(data as object), type: eventName as HermesPetEvent['type'] } as HermesPetEvent, 'bridge');
     });
 
     setIsConnected(hermesClient.getConnectionStatus());
 
     return () => {
       unsubscribe();
+      unsubscribeIpc?.();
       hermesClient.disconnect();
+      clearActionResetTimer();
     };
-  }, [setAction, showBubble, hideBubble]);
+  }, [clearActionResetTimer, handleHermesEvent]);
 
   const handleClick = useCallback(() => {
+    clearActionResetTimer();
     setAction('clicked');
-    setTimeout(() => setAction('idle'), 300);
-  }, [setAction]);
+    scheduleIdle(300);
+  }, [clearActionResetTimer, scheduleIdle, setAction]);
 
   const handleDoubleClick = useCallback(() => {
+    clearActionResetTimer();
     setAction('doubleClicked');
-    setTimeout(() => setAction('idle'), 500);
-  }, [setAction]);
+    scheduleIdle(500);
+  }, [clearActionResetTimer, scheduleIdle, setAction]);
 
   const handleDragStart = useCallback(() => {
+    clearActionResetTimer();
     setAction('dragging');
-  }, [setAction]);
+  }, [clearActionResetTimer, setAction]);
 
   const handleDragEnd = useCallback(() => {
+    clearActionResetTimer();
     setAction('idle');
-  }, [setAction]);
+  }, [clearActionResetTimer, setAction]);
 
   const handleContextMenu = useCallback((x: number, y: number) => {
     openContextMenu(x, y);
@@ -161,6 +208,7 @@ const App: React.FC = () => {
     }}>
       <PetStage
         currentAction={currentAction}
+        actionRevision={actionRevision}
         models={models}
         modelIndex={modelIndex}
         onClick={handleClick}

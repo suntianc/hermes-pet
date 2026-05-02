@@ -1,10 +1,9 @@
-import { app, BrowserWindow, ipcMain, Menu, Tray, nativeImage, screen, protocol, net } from 'electron';
-import * as path from 'path';
-import { pathToFileURL } from 'url';
+import { app } from 'electron';
 import log from 'electron-log';
 import { createPetWindow, getPetWindow, setPetWindow } from './window';
 import { createTray, destroyTray } from './tray';
 import { registerIpcHandlers } from './ipc';
+import { startEventBridge, stopEventBridge } from './event-bridge';
 
 // Configure logging
 log.transports.file.level = 'info';
@@ -41,25 +40,12 @@ if (!gotTheLock) {
 app.whenReady().then(async () => {
   log.info('App is ready');
 
-  // Register custom protocol for serving local Live2D model files
-  protocol.handle('local-model', (request) => {
-    const url = new URL(request.url);
-    // URL pattern: local-model://models/meruru/texture_00.png
-    // → hostname: 'models', pathname: '/meruru/texture_00.png'
-    // Combined: 'models/meruru/texture_00.png'
-    const assetRelativePath = decodeURIComponent(url.hostname + url.pathname);
-    // Use app.getAppPath() – works in both dev mode and production
-    const assetPath = path.join(app.getAppPath(), 'assets', assetRelativePath);
-    log.info(`[local-model] Serving: ${assetPath}`);
-    return net.fetch(pathToFileURL(assetPath).toString());
-  });
-  log.info('Custom protocol local-model:// registered');
-
   try {
     const petWindow = createPetWindow();
     setPetWindow(petWindow);
     createTray(petWindow);
     registerIpcHandlers();
+    startEventBridge(getPetWindow);
 
     log.info('HermesDeskPet initialized successfully');
   } catch (error) {
@@ -89,5 +75,6 @@ app.on('activate', () => {
 
 app.on('before-quit', () => {
   log.info('App is quitting...');
+  stopEventBridge();
   destroyTray();
 });

@@ -16,6 +16,7 @@ apps/desktop/release/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+repomix-output.xml
 
 # Local environment
 .env

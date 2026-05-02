@@ -4,6 +4,7 @@ import { getModelWindowSize, ModelConfig } from '../features/pet/model-registry'
 
 interface PetStageProps {
   currentAction: string;
+  actionRevision?: number;
   models: ModelConfig[];
   modelIndex?: number;
   onClick?: () => void;
@@ -16,6 +17,7 @@ interface PetStageProps {
 
 export const PetStage: React.FC<PetStageProps> = ({
   currentAction,
+  actionRevision = 0,
   models,
   modelIndex = 0,
   onClick: handlePetClick,
@@ -94,15 +96,9 @@ export const PetStage: React.FC<PetStageProps> = ({
 
   useEffect(() => {
     if (!modelLoaded || !rendererRef.current) return;
-    console.log(`[PetStage] Action changed to: ${currentAction}`);
-    switch (currentAction) {
-      case 'idle': rendererRef.current.idle(); break;
-      case 'thinking': rendererRef.current.playMotion('Thinking'); break;
-      case 'speaking': rendererRef.current.playMotion('Talk'); break;
-      case 'happy': rendererRef.current.playMotion('Happy'); break;
-      case 'error': rendererRef.current.playMotion('Sad'); break;
-    }
-  }, [currentAction, modelLoaded]);
+    console.log(`[PetStage] Action changed to: ${currentAction} #${actionRevision}`);
+    rendererRef.current.playAction(currentAction);
+  }, [actionRevision, currentAction, modelLoaded]);
 
   useEffect(() => {
     if (!rendererRef.current || !modelLoaded) return;

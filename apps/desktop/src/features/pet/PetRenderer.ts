@@ -2,6 +2,7 @@ import { ModelConfig } from './model-registry';
 
 export interface PetRenderer {
   loadModel(modelConfig: ModelConfig): Promise<void>;
+  playAction(actionName: string): Promise<void>;
   playMotion(group: string, index?: number): Promise<void>;
   setExpression(name: string): Promise<void>;
   speak(text: string): Promise<void>;
