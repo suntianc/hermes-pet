@@ -1,27 +1,14 @@
 import { Tray, Menu, nativeImage, BrowserWindow, app } from 'electron';
 import * as path from 'path';
 import log from 'electron-log';
+import { setIsQuitting } from './app-state';
 
 let tray: Tray | null = null;
 
 export function createTray(petWindow: BrowserWindow): Tray {
-  // Create a simple tray icon (16x16 for tray)
-  const iconPath = app.isPackaged
-    ? path.join(process.resourcesPath, 'icon.png')
-    : path.join(__dirname, '../../assets/icon.png');
+  const trayIcon = loadTrayIcon();
 
-  // Create a default icon if file doesn't exist
-  let icon: Electron.NativeImage;
-  try {
-    icon = nativeImage.createFromPath(iconPath);
-    if (icon.isEmpty()) {
-      icon = createDefaultIcon();
-    }
-  } catch {
-    icon = createDefaultIcon();
-  }
-
-  tray = new Tray(icon);
+  tray = new Tray(trayIcon);
   tray.setToolTip('ViviPet');
 
   const contextMenu = Menu.buildFromTemplate([
@@ -30,8 +17,10 @@ export function createTray(petWindow: BrowserWindow): Tray {
       click: () => {
         if (petWindow.isVisible()) {
           petWindow.hide();
+          app.dock?.hide(); // Hide Dock indicator when hiding
         } else {
           petWindow.show();
+          app.dock?.show(); // Show Dock indicator when revealing
         }
       },
     },
@@ -64,6 +53,7 @@ export function createTray(petWindow: BrowserWindow): Tray {
     {
       label: 'Quit',
       click: () => {
+        setIsQuitting(true); // Must be set before app.quit() to allow window close
         app.quit();
       },
     },
@@ -75,8 +65,10 @@ export function createTray(petWindow: BrowserWindow): Tray {
   tray.on('double-click', () => {
     if (petWindow.isVisible()) {
       petWindow.hide();
+      app.dock?.hide();
     } else {
       petWindow.show();
+      app.dock?.show();
     }
   });
 
@@ -84,20 +76,57 @@ export function createTray(petWindow: BrowserWindow): Tray {
   return tray;
 }
 
-function createDefaultIcon(): Electron.NativeImage {
-  // Create a simple 16x16 icon programmatically
-  const size = 16;
-  const canvas = Buffer.alloc(size * size * 4);
-
-  // Fill with a solid color (purple-ish)
-  for (let i = 0; i < size * size; i++) {
-    canvas[i * 4] = 128;     // R
-    canvas[i * 4 + 1] = 0;   // G
-    canvas[i * 4 + 2] = 255; // B
-    canvas[i * 4 + 3] = 255; // A
+/**
+ * Load the tray icon.
+ * - On macOS: use a native SF Symbol (pawprint.fill) which always works
+ *   and automatically adapts to light/dark menu bar appearance.
+ * - On Windows: load the app icon from the assets directory.
+ */
+function loadTrayIcon(): Electron.NativeImage {
+  if (process.platform === 'darwin') {
+    // macOS: use native SF Symbol — guaranteed to render in the menu bar
+    const icon = nativeImage.createFromNamedImage('v.circle.fill');
+    if (!icon || icon.isEmpty()) {
+      log.warn('SF Symbol v.circle.fill not available, falling back to star.fill');
+      const fallback = nativeImage.createFromNamedImage('star.fill');
+      const sized = fallback.resize({ width: 18, height: 18 });
+      sized.setTemplateImage(true);
+      return sized;
+    }
+    const sized = icon.resize({ width: 18, height: 18 });
+    sized.setTemplateImage(true);
+    log.info('Tray icon: SF Symbol v.circle.fill');
+    return sized;
   }
 
-  return nativeImage.createFromBuffer(canvas, { width: size, height: size });
+  // Windows: load from file
+  const iconPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'assets', 'icon.png')
+    : path.join(__dirname, '../../assets/icon.png');
+
+  try {
+    const icon = nativeImage.createFromPath(iconPath);
+    if (!icon.isEmpty()) {
+      log.info('Tray icon loaded from file');
+      return icon.resize({ width: 18, height: 18 });
+    }
+  } catch (err) {
+    log.warn('Failed to load tray icon from file:', err);
+  }
+
+  // Fallback: solid white circle
+  const S = 18;
+  const buf = Buffer.alloc(S * S * 4, 0);
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const dx = x - 9, dy = y - 9;
+      if (dx * dx + dy * dy <= 7 * 7) {
+        const i = (y * S + x) * 4;
+        buf[i] = 255; buf[i + 1] = 255; buf[i + 2] = 255; buf[i + 3] = 255;
+      }
+    }
+  }
+  return nativeImage.createFromBuffer(buf, { width: S, height: S });
 }
 
 export function getTray(): Tray | null {

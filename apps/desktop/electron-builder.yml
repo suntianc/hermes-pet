@@ -9,9 +9,19 @@ files:
 extraResources:
   - from: assets
     to: assets
-electronDist: node_modules/electron/dist
-electronVersion: 31.1.0
+  - from: public/models
+    to: models
+electronDist: ../../node_modules/electron/dist
 mac:
   category: public.app-category.productivity
   target:
-    - dir
+    - dmg
+    - zip
+  icon: assets/icon.png
+win:
+  target:
+    - nsis
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  runAfterFinish: true

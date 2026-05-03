@@ -3,7 +3,7 @@
     {
       "id": "jian",
       "name": "Jian",
-      "path": "/Resources/Jian/Jian.model3.json",
+      "path": "/models/Jian/Jian.model3.json",
       "window": { "width": 500, "height": 450 },
       "canvas": { "width": 500, "height": 450 },
       "actions": {

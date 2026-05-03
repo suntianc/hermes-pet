@@ -1,6 +1,7 @@
 import { BrowserWindow, screen, Display, app } from 'electron';
 import * as path from 'path';
 import log from 'electron-log';
+import { getIsQuitting } from './app-state';
 
 let petWindow: BrowserWindow | null = null;
 
@@ -13,11 +14,6 @@ export function createPetWindow(): BrowserWindow {
   // Default position: bottom-right corner
   const defaultX = screenWidth - DEFAULT_WIDTH - 20;
   const defaultY = screenHeight - DEFAULT_HEIGHT - 20;
-
-  // Hide from macOS Dock to prevent window-manager flashing
-  if (process.platform === 'darwin') {
-    app.dock?.hide();
-  }
 
   petWindow = new BrowserWindow({
     width: DEFAULT_WIDTH,
@@ -60,6 +56,18 @@ export function createPetWindow(): BrowserWindow {
 
   petWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
     log.error(`Failed to load: ${errorCode} - ${errorDescription}`);
+  });
+
+  // Intercept close: hide to tray instead of destroying the window.
+  // Only allow actual close when the app is quitting via tray menu.
+  // On macOS, hiding the window also hides the Dock icon (removes the white dot).
+  petWindow.on('close', (event) => {
+    if (!getIsQuitting()) {
+      event.preventDefault();
+      petWindow?.hide();
+      app.dock?.hide(); // Remove Dock indicator - app still runs with tray
+      log.info('Window hidden to tray (close intercepted)');
+    }
   });
 
   petWindow.on('closed', () => {

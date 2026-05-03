@@ -95,6 +95,10 @@ class OfficialCubismModel extends CubismUserModel {
   private userTimeSeconds = 0;
   private ready = false;
   private disposed = false;
+  /** Names of all available motion groups (e.g. ["Idle", "Thinking", ...]) */
+  readonly motionGroups: string[] = [];
+  /** Names of all available expressions (e.g. ["Blush", "StarEyes", ...]) */
+  readonly expressionNames: string[] = [];
 
   constructor(gl: WebGLRenderingContext) {
     super();
@@ -207,6 +211,16 @@ class OfficialCubismModel extends CubismUserModel {
     this._expressionManager.stopAllMotions();
   }
 
+  /** Check if a motion group exists in the loaded model */
+  hasMotionGroup(groupName: string): boolean {
+    return this.motionGroups.includes(groupName);
+  }
+
+  /** Check if an expression exists in the loaded model */
+  hasExpression(name: string): boolean {
+    return this.expressions.has(name);
+  }
+
   setPointer(clientX: number, clientY: number, canvasWidth: number, canvasHeight: number): void {
     const x = Math.max(-1, Math.min(1, (clientX / canvasWidth) * 2 - 1));
     const y = Math.max(-1, Math.min(1, -((clientY / canvasHeight) * 2 - 1)));
@@ -245,6 +259,10 @@ class OfficialCubismModel extends CubismUserModel {
       const expression = this.loadExpression(buffer, buffer.byteLength, name);
       if (expression) this.expressions.set(name, expression);
     });
+    // Record available expression names for auto-detection
+    for (let i = 0; i < count; i++) {
+      this.expressionNames.push(this.setting!.getExpressionName(i));
+    }
 
     await Promise.all(tasks);
   }
@@ -271,6 +289,8 @@ class OfficialCubismModel extends CubismUserModel {
 
     for (let groupIndex = 0; groupIndex < groupCount; groupIndex += 1) {
       const group = this.setting!.getMotionGroupName(groupIndex);
+      // Record available motion group names for auto-detection
+      this.motionGroups.push(group);
       const motionCount = this.setting!.getMotionCount(group);
 
       for (let motionIndex = 0; motionIndex < motionCount; motionIndex += 1) {
@@ -426,10 +446,25 @@ export class Live2DRenderer implements PetRenderer {
     console.log('[Live2DRenderer] Official Cubism model loaded successfully');
   }
 
+  /**
+   * Play an action by name, resolving motions and expressions in this priority:
+   * 1. Manual override from model config (models.json → FALLBACK_MODELS)
+   * 2. Auto-detect from loaded model: match motion group name to action name
+   * 3. Idle motion + optional expression fallback
+   */
   async playAction(actionName: string): Promise<void> {
-    const action = this.currentModelConfig?.actions?.[actionName] ?? this.getDefaultAction(actionName);
-    if (!action) return;
-    await this.playConfiguredAction(action);
+    // Priority 1: Manual override from model config
+    const configuredAction = this.currentModelConfig?.actions?.[actionName];
+    if (configuredAction) {
+      await this.playConfiguredAction(configuredAction);
+      return;
+    }
+
+    // Priority 2 & 3: Auto-detect or Idle fallback
+    const resolvedAction = this.resolveAction(actionName);
+    if (resolvedAction) {
+      await this.playConfiguredAction(resolvedAction);
+    }
   }
 
   async playMotion(group: string, index = 0): Promise<void> {
@@ -588,18 +623,73 @@ export class Live2DRenderer implements PetRenderer {
     }
   }
 
-  private getDefaultAction(actionName: string): ModelActionConfig | undefined {
-    const defaults: Record<string, ModelActionConfig> = {
-      idle: { motion: { group: 'Idle', index: 0 } },
-      thinking: { expression: 'StarEyes' },
-      speaking: { expression: 'Blush' },
-      happy: { expression: 'HeartEyes' },
-      success: { expression: 'HeartEyes' },
-      error: { expression: 'DarkFace' },
-      confused: { expression: 'WhiteEyes' },
-      angry: { expression: 'Angry' },
-    };
+  /**
+   * Resolve an action by auto-detecting motions and expressions from the loaded model.
+   *
+   * Resolution order for motion:
+   *   1. Match action name as motion group (capitalized: "thinking" → "Thinking")
+   *   2. Fallback to "Idle" group
+   *
+   * Resolution order for expression:
+   *   1. Use the default expression mapping for this action
+   *   2. Only apply if the model actually has this expression loaded
+   */
+  private resolveAction(actionName: string): ModelActionConfig | undefined {
+    const model = this.model;
+    if (!model) return this.hardcodedIdle();
 
-    return defaults[actionName];
+    const config: ModelActionConfig = {};
+
+    // ---- Resolve motion ----
+    const capitalized = actionName.charAt(0).toUpperCase() + actionName.slice(1); // "thinking" → "Thinking"
+    if (model.hasMotionGroup(capitalized)) {
+      config.motion = { group: capitalized, index: 0 };
+    } else if (model.hasMotionGroup(actionName)) {
+      config.motion = { group: actionName, index: 0 };
+    } else if (model.hasMotionGroup('Idle')) {
+      config.motion = { group: 'Idle', index: 0 };
+    }
+
+    // ---- Resolve expression ----
+    const exprName = this.getExpressionForAction(actionName);
+    if (exprName && model.hasExpression(exprName)) {
+      config.expression = exprName;
+    }
+
+    return config.motion ? config : undefined;
+  }
+
+  /** Hardcoded Idle fallback when no model is loaded */
+  private hardcodedIdle(): ModelActionConfig {
+    return { motion: { group: 'Idle', index: 0 } };
+  }
+
+  /**
+   * Map semantic action names to expression names.
+   * Model creators should follow this convention when naming their .exp3.json files.
+   */
+  private getExpressionForAction(actionName: string): string | undefined {
+    const map: Record<string, string | undefined> = {
+      idle: undefined,
+      thinking: 'StarEyes',
+      speaking: 'Blush',
+      happy: 'HeartEyes',
+      success: 'HeartEyes',
+      error: 'DarkFace',
+      confused: 'WhiteEyes',
+      angry: 'Angry',
+      surprised: 'Surprised',
+      searching: 'StarEyes',
+      reading: 'RightHand',
+      coding: 'LeftHand',
+      terminal: 'WhiteEyes',
+      dragging: 'Blush',
+      clicked: 'Blush',
+      doubleClicked: 'HeartEyes',
+      sleep: 'Sleep',
+      wake: undefined,
+      rightClickMenu: undefined,
+    };
+    return map[actionName];
   }
 }

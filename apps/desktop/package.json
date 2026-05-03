@@ -13,7 +13,9 @@
     "build:renderer": "vite build",
     "start": "electron .",
     "lint": "eslint src --ext .ts,.tsx",
-    "package": "npm run build && electron-builder --mac --publish never"
+    "package": "npm run build && electron-builder --mac --publish never",
+    "package:win": "npm run build && electron-builder --win --publish never",
+    "package:all": "npm run build && electron-builder --mac --win --publish never"
   },
   "dependencies": {
     "electron-log": "^5.1.7"
@@ -23,8 +25,8 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "concurrently": "^8.2.2",
-    "electron": "^31.1.0",
-    "electron-builder": "^24.13.3",
+    "electron": "^41.5.0",
+    "electron-builder": "^26.8.1",
     "typescript": "^5.5.2",
     "vite": "^5.3.1"
   },
@@ -42,15 +44,31 @@
       {
         "from": "assets",
         "to": "assets"
+      },
+      {
+        "from": "public/models",
+        "to": "models"
       }
     ],
-    "electronDist": "node_modules/electron/dist",
-    "electronVersion": "31.1.0",
+    "electronDist": "../../node_modules/electron/dist",
+    "electronVersion": "41.5.0",
     "mac": {
       "category": "public.app-category.productivity",
       "target": [
-        "dir"
+        "dmg",
+        "zip"
+      ],
+      "icon": "assets/icon.png"
+    },
+    "win": {
+      "target": [
+        "nsis"
       ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": true
     }
   }
 }

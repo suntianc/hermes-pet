@@ -30,7 +30,7 @@ export const FALLBACK_MODELS: ModelConfig[] = [
   {
     id: 'jian',
     name: 'Jian',
-    path: 'Resources/Jian/Jian.model3.json',
+    path: 'models/Jian/Jian.model3.json',
     window: { width: 1000, height: 900 },
     canvas: { width: 1000, height: 900 },
     actions: {

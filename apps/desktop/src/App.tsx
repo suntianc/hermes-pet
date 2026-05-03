@@ -135,9 +135,6 @@ const App: React.FC = () => {
       case 'settings':
         showBubble('Settings coming soon...', 2000);
         break;
-      case 'quit':
-        window.electronAPI?.petWindow.close();
-        break;
     }
   }, [closeContextMenu, showBubble]);
 

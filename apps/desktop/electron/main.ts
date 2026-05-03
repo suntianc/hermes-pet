@@ -1,9 +1,9 @@
 import { app } from 'electron';
 import log from 'electron-log';
 import { createPetWindow, getPetWindow, setPetWindow } from './window';
-import { createTray, destroyTray } from './tray';
+import { createTray } from './tray';
 import { registerIpcHandlers } from './ipc';
-import { startEventBridge, stopEventBridge } from './event-bridge';
+import { startEventBridge } from './event-bridge';
 
 // Configure logging
 log.transports.file.level = 'info';
@@ -54,27 +54,26 @@ app.whenReady().then(async () => {
   }
 });
 
+// Window close is intercepted to hide to tray instead of destroying.
+// On all platforms we keep the app alive -- quit only via tray menu.
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  log.info('window-all-closed fired (not quitting -- window was hidden to tray)');
 });
 
-app.on('quit', () => {
-  log.info('quit event fired');
+// Quit ONLY happens via tray menu Quit button (which calls setIsQuitting + app.quit).
+// For all other close/quit attempts (Cmd+Q, Cmd+W, system signals):
+// - before-quit fires first, but we do nothing here
+// - the window's close handler sees !isQuitting → preventDefault + hide
+// - the quit is aborted, app stays alive
+app.on('before-quit', () => {
+  log.info('before-quit fired (will be intercepted if not from tray Quit)');
 });
 
 app.on('activate', () => {
-  // On macOS, re-create window when dock icon is clicked
+  // macOS: if dock icon is clicked (unlikely since dock is hidden),
+  // show the existing hidden window instead of creating a new one.
   const petWindow = getPetWindow();
-  if (!petWindow) {
-    const newWindow = createPetWindow();
-    setPetWindow(newWindow);
+  if (petWindow && !petWindow.isDestroyed()) {
+    petWindow.show();
   }
-});
-
-app.on('before-quit', () => {
-  log.info('App is quitting...');
-  stopEventBridge();
-  destroyTray();
 });

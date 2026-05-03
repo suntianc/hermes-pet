@@ -44,10 +44,6 @@ export const PetContextMenu: React.FC<PetContextMenuProps> = ({ x, y, models, on
     onAction('settings');
   }, [onAction]);
 
-  const handleQuit = useCallback(() => {
-    window.electronAPI?.petWindow.close();
-  }, []);
-
   const handleSwitchModel = useCallback((index: number) => {
     onAction(`model:${index}`);
   }, [onAction]);
@@ -115,8 +111,6 @@ export const PetContextMenu: React.FC<PetContextMenuProps> = ({ x, y, models, on
       ))}
       <div style={dividerStyle} />
       <div style={itemStyle} onClick={handleSettings}>Settings</div>
-      <div style={dividerStyle} />
-      <div style={{ ...itemStyle, color: '#e53935' }} onClick={handleQuit}>Quit</div>
     </div>
   );
 };

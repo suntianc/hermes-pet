@@ -1,4 +1,4 @@
-import { ipcMain, screen } from 'electron';
+import { ipcMain, screen, app } from 'electron';
 import log from 'electron-log';
 import { getPetWindow } from './window';
 import { getTray } from './tray';
@@ -19,7 +19,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.on('pet:window:hide', () => {
     const win = getPetWindow();
-    if (win) win.hide();
+    if (win) {
+      win.hide();
+      app.dock?.hide();
+    }
   });
 
   ipcMain.on('pet:window:show', () => {
@@ -27,12 +30,15 @@ export function registerIpcHandlers(): void {
     if (win) {
       win.show();
       win.focus();
+      app.dock?.show();
     }
   });
 
   ipcMain.on('pet:window:close', () => {
     const win = getPetWindow();
-    if (win) win.close();
+    // Close from renderer = always hide to tray.
+    // True quit is only via the tray "Quit" menu item.
+    if (win) win.hide();
   });
 
   ipcMain.on('pet:window:setAlwaysOnTop', (_event, flag: boolean) => {
