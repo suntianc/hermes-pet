@@ -142,17 +142,31 @@ const App: React.FC = () => {
     }
   }, [showBubble]);
 
-  // Listen for actions from tray menu (sent via pet:action IPC)
+  // Listen for IPC events from main process:
+  // - Tray menu actions → handleMenuAction
+  // - Event bridge (type-based) → handleExternalEvent
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const api = (window as any).electronAPI;
     if (api?.onPetAction) {
-      const cleanup = api.onPetAction((action: string) => {
-        handleMenuAction(action);
+      const cleanup = api.onPetAction((action: string, params?: unknown) => {
+        console.log(`[IPC] Received action: ${action}`, params);
+        // Route to menu handler if it looks like a menu action
+        if (action.startsWith('model:') ||
+            action === 'settings' ||
+            action === 'importModel' ||
+            action === 'refreshModels') {
+          handleMenuAction(action);
+          return;
+        }
+        // Play the action directly (bypasses handleExternalEvent for reliable triggering)
+        clearActionResetTimer();
+        setAction(action as ActionType);
+        scheduleIdle(5000);
       });
       return cleanup;
     }
-  }, [handleMenuAction]);
+  }, [handleMenuAction, handleExternalEvent, showBubble]);
 
   return (
     <div style={{
