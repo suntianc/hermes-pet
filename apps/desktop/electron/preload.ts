@@ -19,13 +19,18 @@ export interface PetModelAPI {
     name: string;
     path: string;
     window?: { width: number; height: number };
+    actions?: Record<string, unknown>;
   } | null>;
   listUserModels: () => Promise<Array<{
     id: string;
     name: string;
     path: string;
     window?: { width: number; height: number };
+    actions?: Record<string, unknown>;
   }>>;
+  indexBundledModels: (models: Array<{ id: string; name: string; path: string }>) => Promise<void>;
+  setCurrent: (modelId: string) => Promise<void>;
+  listActions: (modelId?: string) => Promise<unknown[]>;
 }
 
 export interface ElectronAPI {
@@ -61,6 +66,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   petModel: {
     import: () => ipcRenderer.invoke('pet:model:import'),
     listUserModels: () => ipcRenderer.invoke('pet:model:listUserModels'),
+    indexBundledModels: (models: Array<{ id: string; name: string; path: string }>) =>
+      ipcRenderer.invoke('pet:model:indexBundledModels', models),
+    setCurrent: (modelId: string) => ipcRenderer.invoke('pet:model:setCurrent', modelId),
+    listActions: (modelId?: string) => ipcRenderer.invoke('pet:model:listActions', modelId),
   },
 } as ElectronAPI);
 

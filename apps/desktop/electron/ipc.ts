@@ -2,7 +2,8 @@ import { ipcMain, screen } from 'electron';
 import log from 'electron-log';
 import { getPetWindow } from './window';
 import { updateTrayModelNames } from './tray';
-import { importModelViaDialog, listUserModels } from './model-manager';
+import { importModelViaDialog, indexBundledModels, listUserModels } from './model-manager';
+import { getCurrentModelId, listModelActions, setCurrentModelId } from './action-index';
 
 let dragSession: {
   pointerX: number;
@@ -104,6 +105,18 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('pet:model:listUserModels', async () => {
     return listUserModels();
+  });
+
+  ipcMain.handle('pet:model:indexBundledModels', async (_event, models: Array<{ id: string; name: string; path: string }>) => {
+    indexBundledModels(models);
+  });
+
+  ipcMain.handle('pet:model:setCurrent', async (_event, modelId: string) => {
+    setCurrentModelId(modelId);
+  });
+
+  ipcMain.handle('pet:model:listActions', async (_event, modelId?: string) => {
+    return listModelActions(modelId || getCurrentModelId());
   });
 
   log.info('IPC handlers registered');

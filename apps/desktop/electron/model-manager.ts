@@ -1,9 +1,24 @@
 import { app, protocol, net, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 import log from 'electron-log';
+import extractZip from 'extract-zip';
+import { indexModelActions, IndexedModelAction } from './action-index';
 
 const USER_MODELS_DIR = 'models';
+
+type RendererActionConfig = {
+  motion?: { group: string; index?: number; file?: string };
+  expression?: string;
+  expressionFile?: string;
+};
+
+type BundledModelConfig = {
+  id: string;
+  name: string;
+  path: string;
+};
 
 /**
  * Resolve the absolute path to a user data model file.
@@ -38,6 +53,85 @@ export function initModelProtocol(): void {
 function pathToFileURL(filePath: string): string {
   // Simple file:// URL construction (avoids url module dependency)
   return 'file://' + filePath.replace(/\\/g, '/');
+}
+
+function resolveBundledModelPath(modelPath: string): string | null {
+  if (modelPath.startsWith('vivipet-assets://')) return null;
+
+  const cleanPath = modelPath.replace(/^\.\//, '').replace(/^\//, '');
+  const candidates = app.isPackaged
+    ? [path.join(process.resourcesPath, cleanPath)]
+    : [
+        path.join(app.getAppPath(), 'public', cleanPath),
+        path.join(process.cwd(), 'public', cleanPath),
+      ];
+
+  return candidates.find((candidate) => fs.existsSync(candidate)) ?? null;
+}
+
+function copyDirectoryIfExists(srcDir: string, destDir: string): void {
+  if (!fs.existsSync(srcDir)) return;
+
+  const entries = fs.readdirSync(srcDir, { withFileTypes: true });
+  fs.mkdirSync(destDir, { recursive: true });
+  for (const entry of entries) {
+    const srcPath = path.join(srcDir, entry.name);
+    const destPath = path.join(destDir, entry.name);
+    if (entry.isDirectory()) {
+      copyDirectoryIfExists(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
+function findFiles(dir: string, predicate: (filePath: string) => boolean): string[] {
+  if (!fs.existsSync(dir)) return [];
+
+  const result: string[] = [];
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const entryPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      result.push(...findFiles(entryPath, predicate));
+    } else if (predicate(entryPath)) {
+      result.push(entryPath);
+    }
+  }
+  return result;
+}
+
+function findPackagedModel3(rootDir: string): string {
+  const model3Files = findFiles(rootDir, (filePath) => filePath.endsWith('.model3.json'));
+  if (model3Files.length === 0) {
+    throw new Error('No .model3.json file found in the model package');
+  }
+  if (model3Files.length > 1) {
+    throw new Error(`Expected exactly one .model3.json file, found ${model3Files.length}`);
+  }
+  return model3Files[0];
+}
+
+function validateModelPackage(model3Path: string): void {
+  const info = parseModel3References(model3Path);
+  const missingFiles = info.files.filter((relFile) => !fs.existsSync(path.join(info.dir, relFile)));
+  if (missingFiles.length > 0) {
+    throw new Error(`Missing referenced model files: ${missingFiles.join(', ')}`);
+  }
+
+  const motionDir = path.join(info.dir, 'motion');
+  if (!fs.existsSync(motionDir) || !fs.statSync(motionDir).isDirectory()) {
+    throw new Error('Model package must include a motion/ directory');
+  }
+
+  const idleMotion = path.join(motionDir, 'idle.motion3.json');
+  if (!fs.existsSync(idleMotion)) {
+    throw new Error('Model package must include motion/idle.motion3.json');
+  }
+}
+
+function toModelId(name: string): string {
+  return name.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase() || 'imported_model';
 }
 
 /**
@@ -75,7 +169,7 @@ function parseModel3References(model3Path: string): {
 
   // Derive a model ID from the directory name
   const dirName = path.basename(dir);
-  const modelId = dirName.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase() || 'imported_model';
+  const modelId = toModelId(dirName);
 
   // Try to extract canvas size from model3.json layout
   let windowSize: { width: number; height: number } | undefined;
@@ -87,8 +181,8 @@ function parseModel3References(model3Path: string): {
 }
 
 /**
- * Open a file dialog for the user to select a model3.json,
- * then copy the model files into the userData directory.
+ * Open a file dialog for the user to select a ViviPet model zip package,
+ * then validate and copy the model files into the userData directory.
  * Returns the imported model's config, or null if cancelled/error.
  */
 export async function importModelViaDialog(): Promise<{
@@ -96,36 +190,67 @@ export async function importModelViaDialog(): Promise<{
   name: string;
   path: string;
   window?: { width: number; height: number };
+  actions?: Record<string, RendererActionConfig>;
 } | null> {
   const result = await dialog.showOpenDialog({
-    title: 'Select Live2D Model',
+    title: 'Select ViviPet Model Package',
     properties: ['openFile'],
-    filters: [{ name: 'Live2D Model (model3.json)', extensions: ['json'] }],
+    filters: [{ name: 'ViviPet Model Package (.zip)', extensions: ['zip'] }],
   });
 
   if (result.canceled || result.filePaths.length === 0) {
     return null;
   }
 
-  const selectedPath = result.filePaths[0];
-  return importModelFromPath(selectedPath);
+  return importModelZip(result.filePaths[0]);
+}
+
+async function importModelZip(zipPath: string): Promise<{
+  id: string;
+  name: string;
+  path: string;
+  window?: { width: number; height: number };
+  actions?: Record<string, RendererActionConfig>;
+} | null> {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vivipet-model-'));
+
+  try {
+    await extractZip(zipPath, { dir: tempDir });
+    const model3Path = findPackagedModel3(tempDir);
+    validateModelPackage(model3Path);
+    const packageRoot = path.dirname(model3Path);
+    const modelIdHint = packageRoot === tempDir
+      ? toModelId(path.basename(zipPath, path.extname(zipPath)))
+      : undefined;
+    return importModelFromPath(model3Path, zipPath, modelIdHint);
+  } catch (err) {
+    log.error(`[ModelManager] Failed to import model package: ${err}`);
+    return null;
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
 }
 
 /**
  * Import a model from a selected model3.json path.
  * Copies all model files into userData/models/<modelId>/.
  */
-async function importModelFromPath(model3Path: string): Promise<{
+async function importModelFromPath(model3Path: string, sourcePath = model3Path, modelIdHint?: string): Promise<{
   id: string;
   name: string;
   path: string;
   window?: { width: number; height: number };
+  actions?: Record<string, RendererActionConfig>;
 } | null> {
   try {
     const info = parseModel3References(model3Path);
+    if (modelIdHint) {
+      info.modelId = modelIdHint;
+    }
 
     // Create target directory
     const targetDir = resolveUserModelPath(info.modelId);
+    fs.rmSync(targetDir, { recursive: true, force: true });
     fs.mkdirSync(targetDir, { recursive: true });
 
     // Copy model3.json and all referenced files
@@ -146,16 +271,28 @@ async function importModelFromPath(model3Path: string): Promise<{
       }
     }
 
+    // ViviPet model package convention: every custom action lives under motion/.
+    // Copy the whole folder so unreferenced motion files can still be indexed and played.
+    copyDirectoryIfExists(path.join(info.dir, 'motion'), path.join(targetDir, 'motion'));
+    copyDirectoryIfExists(path.join(info.dir, 'expression'), path.join(targetDir, 'expression'));
+
     // Write registry metadata
     const registry = {
       id: info.modelId,
       name: info.modelId,
-      sourcePath: model3Path,
+      sourcePath,
       importedAt: new Date().toISOString(),
       model3File: path.basename(model3Path),
       window: info.windowSize,
     };
     fs.writeFileSync(path.join(targetDir, '.vivipet-registry.json'), JSON.stringify(registry, null, 2));
+
+    const actions = indexModelActions({
+      modelId: info.modelId,
+      name: info.modelId,
+      modelPath: model3Dest,
+      rootDir: targetDir,
+    });
 
     log.info(`[ModelManager] Model imported: ${info.modelId} → ${targetDir}`);
     return {
@@ -163,6 +300,7 @@ async function importModelFromPath(model3Path: string): Promise<{
       name: info.modelId,
       path: `vivipet-assets://models/${info.modelId}/${path.basename(model3Path)}`,
       window: info.windowSize,
+      actions: toRendererActions(actions),
     };
   } catch (err) {
     log.error(`[ModelManager] Failed to import model: ${err}`);
@@ -179,6 +317,7 @@ export function listUserModels(): Array<{
   name: string;
   path: string;
   window?: { width: number; height: number };
+  actions?: Record<string, RendererActionConfig>;
 }> {
   const modelsDir = resolveUserModelPath('');
   if (!fs.existsSync(modelsDir)) {
@@ -191,6 +330,7 @@ export function listUserModels(): Array<{
     name: string;
     path: string;
     window?: { width: number; height: number };
+    actions?: Record<string, RendererActionConfig>;
   }> = [];
 
   for (const entry of entries) {
@@ -201,11 +341,22 @@ export function listUserModels(): Array<{
 
     try {
       const registry = JSON.parse(fs.readFileSync(registryPath, 'utf-8'));
-      models.push({
-        id: registry.id || entry.name,
+      const id = registry.id || entry.name;
+      const model3File = registry.model3File || `${entry.name}.model3.json`;
+      const rootDir = path.join(modelsDir, entry.name);
+      const model3Path = path.join(rootDir, model3File);
+      const actions = indexModelActions({
+        modelId: id,
         name: registry.name || entry.name,
-        path: `vivipet-assets://models/${registry.id || entry.name}/${registry.model3File || `${entry.name}.model3.json`}`,
+        modelPath: model3Path,
+        rootDir,
+      });
+      models.push({
+        id,
+        name: registry.name || entry.name,
+        path: `vivipet-assets://models/${id}/${model3File}`,
         window: registry.window,
+        actions: toRendererActions(actions),
       });
     } catch (err) {
       log.warn(`[ModelManager] Failed to read registry: ${registryPath}`, err);
@@ -215,3 +366,36 @@ export function listUserModels(): Array<{
   return models;
 }
 
+export function indexBundledModels(models: BundledModelConfig[]): void {
+  for (const model of models) {
+    const modelPath = resolveBundledModelPath(model.path);
+    if (!modelPath) continue;
+
+    indexModelActions({
+      modelId: model.id,
+      name: model.name,
+      modelPath,
+      rootDir: path.dirname(modelPath),
+    });
+  }
+}
+
+function toRendererActions(actions: IndexedModelAction[]): Record<string, RendererActionConfig> {
+  const result: Record<string, RendererActionConfig> = {};
+
+  for (const action of actions) {
+    if (action.type === 'motion') {
+      result[action.name] = {
+        motion: {
+          group: action.groupName || action.name,
+          index: action.indexNo ?? 0,
+          file: action.filePath,
+        },
+      };
+    } else {
+      result[action.name] = { expression: action.name, expressionFile: action.filePath };
+    }
+  }
+
+  return result;
+}

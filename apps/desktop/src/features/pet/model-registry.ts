@@ -17,8 +17,10 @@ export interface ModelActionConfig {
   motion?: {
     group: string;
     index?: number;
+    file?: string;
   };
   expression?: string;
+  expressionFile?: string;
   resetExpressionAfterMs?: number;
 }
 
@@ -76,13 +78,28 @@ export async function loadModelConfigs(): Promise<ModelConfig[]> {
     builtIn = FALLBACK_MODELS;
   }
 
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (window as any).electronAPI?.petModel?.indexBundledModels?.(
+      builtIn.map((model) => ({ id: model.id, name: model.name, path: model.path })),
+    );
+  } catch (err) {
+    console.warn('[ModelRegistry] Failed to index bundled models:', err);
+  }
+
   // 2. Load user-imported models (if available via IPC)
   let userModels: ModelConfig[] = [];
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const remote = (window as any).electronAPI?.petModel;
     if (remote?.listUserModels) {
-      const imported: Array<{ id: string; name: string; path: string; window?: { width: number; height: number } }>
+      const imported: Array<{
+        id: string;
+        name: string;
+        path: string;
+        window?: { width: number; height: number };
+        actions?: Record<string, ModelActionConfig>;
+      }>
         = await remote.listUserModels();
       userModels = imported.filter((m): m is typeof m & { id: string; name: string; path: string } =>
         Boolean(m.id && m.name && m.path),
@@ -92,6 +109,7 @@ export async function loadModelConfigs(): Promise<ModelConfig[]> {
         path: m.path,
         window: m.window,
         canvas: m.window ? { width: m.window.width, height: m.window.height } : undefined,
+        actions: m.actions,
       }));
     }
   } catch (err) {

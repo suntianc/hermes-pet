@@ -145,6 +145,19 @@ class OfficialCubismModel extends CubismUserModel {
     this.ready = true;
   }
 
+  async loadConfiguredAssets(actions: Record<string, ModelActionConfig> | undefined): Promise<void> {
+    if (!actions) return;
+
+    await Promise.all(Object.entries(actions).map(async ([actionName, action]) => {
+      if (action.motion?.file) {
+        await this.loadExtraMotion(actionName, action.motion.group, action.motion.index ?? 0, action.motion.file);
+      }
+      if (action.expression && action.expressionFile && !this.expressions.has(action.expression)) {
+        await this.loadExtraExpression(action.expression, action.expressionFile);
+      }
+    }));
+  }
+
   update(deltaTimeSeconds: number): void {
     if (this.disposed || !this.ready || !this._model) return;
 
@@ -355,6 +368,50 @@ class OfficialCubismModel extends CubismUserModel {
     motion?.setEffectIds(this.eyeBlinkIds, this.lipSyncIds);
   }
 
+  private async loadExtraMotion(actionName: string, group: string, index: number, filePath: string): Promise<void> {
+    const name = `${group}_${index}`;
+    if (this.motions.has(name)) return;
+
+    try {
+      const buffer = await fetchArrayBuffer(this.homeDir + filePath);
+      const motion = this.loadMotion(
+        buffer,
+        buffer.byteLength,
+        actionName,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        this._motionConsistency,
+      );
+      if (motion) {
+        motion.setEffectIds(this.eyeBlinkIds, this.lipSyncIds);
+        this.motions.set(name, motion);
+        if (!this.motionGroups.includes(group)) {
+          this.motionGroups.push(group);
+        }
+      }
+    } catch (err) {
+      console.warn(`[Live2DRenderer] Failed to load extra motion ${filePath}:`, err);
+    }
+  }
+
+  private async loadExtraExpression(name: string, filePath: string): Promise<void> {
+    try {
+      const buffer = await fetchArrayBuffer(this.homeDir + filePath);
+      const expression = this.loadExpression(buffer, buffer.byteLength, name);
+      if (expression) {
+        this.expressions.set(name, expression);
+        if (!this.expressionNames.includes(name)) {
+          this.expressionNames.push(name);
+        }
+      }
+    } catch (err) {
+      console.warn(`[Live2DRenderer] Failed to load extra expression ${filePath}:`, err);
+    }
+  }
+
   private async loadTextures(): Promise<void> {
     const count = this.setting?.getTextureCount() ?? 0;
 
@@ -468,6 +525,7 @@ export class Live2DRenderer implements PetRenderer {
     const finalPath = toModelUrl(modelConfig.path);
     console.log('[Live2DRenderer] Loading official Cubism model from:', finalPath);
     await model.load(finalPath, this.canvas!.width, this.canvas!.height);
+    await model.loadConfiguredAssets(modelConfig.actions);
 
     if (this.disposed || version !== this.loadVersion) {
       model.release();
@@ -713,6 +771,9 @@ export class Live2DRenderer implements PetRenderer {
     }
     if (model.hasMotionGroup(actionName)) {
       return { motion: { group: actionName, index: 0 } };
+    }
+    if (model.hasExpression(actionName)) {
+      return { expression: actionName };
     }
     if (model.hasMotionGroup('Idle')) {
       return { motion: { group: 'Idle', index: 0 } };

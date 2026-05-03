@@ -7,16 +7,16 @@
 		],
 		"Physics": "Jian.physics3.json",
 		"Expressions": [
-			{ "Name": "Blush", "File": "脸红.exp3.json" },
-			{ "Name": "LeftHand", "File": "左手.exp3.json" },
-			{ "Name": "Blood", "File": "血.exp3.json" },
-			{ "Name": "StarEyes", "File": "星星眼.exp3.json" },
-			{ "Name": "RightHand", "File": "右手.exp3.json" },
-			{ "Name": "HeartEyes", "File": "爱心眼.exp3.json" },
-			{ "Name": "DarkFace", "File": "脸黑.exp3.json" },
-			{ "Name": "Tear", "File": "泪.exp3.json" },
-			{ "Name": "WhiteEyes", "File": "白眼.exp3.json" },
-			{ "Name": "Angry", "File": "生气.exp3.json" }
+			{ "Name": "Blush", "File": "expression/脸红.exp3.json" },
+			{ "Name": "LeftHand", "File": "expression/左手.exp3.json" },
+			{ "Name": "Blood", "File": "expression/血.exp3.json" },
+			{ "Name": "StarEyes", "File": "expression/星星眼.exp3.json" },
+			{ "Name": "RightHand", "File": "expression/右手.exp3.json" },
+			{ "Name": "HeartEyes", "File": "expression/爱心眼.exp3.json" },
+			{ "Name": "DarkFace", "File": "expression/脸黑.exp3.json" },
+			{ "Name": "Tear", "File": "expression/泪.exp3.json" },
+			{ "Name": "WhiteEyes", "File": "expression/白眼.exp3.json" },
+			{ "Name": "Angry", "File": "expression/生气.exp3.json" }
 		],
 		"Motions": {
 			"Idle": [

@@ -5,6 +5,7 @@ import { createTray } from './tray';
 import { registerIpcHandlers } from './ipc';
 import { startEventBridge } from './event-bridge';
 import { initModelProtocol } from './model-manager';
+import { initActionIndex, listCurrentModelActions } from './action-index';
 
 // Configure logging
 log.transports.file.level = 'info';
@@ -43,13 +44,14 @@ app.whenReady().then(async () => {
 
   // Initialize custom protocol for user-imported model assets
   initModelProtocol();
+  initActionIndex();
 
   try {
     const petWindow = createPetWindow();
     setPetWindow(petWindow);
     createTray(petWindow);
     registerIpcHandlers();
-    startEventBridge(getPetWindow);
+    startEventBridge(getPetWindow, listCurrentModelActions);
 
     log.info('ViviPet initialized successfully');
   } catch (error) {

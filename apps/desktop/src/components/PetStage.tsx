@@ -86,6 +86,8 @@ export const PetStage: React.FC<PetStageProps> = ({
     const model = models[modelIndex];
     if (!model) return;
 
+    window.electronAPI?.petModel?.setCurrent?.(model.id);
+
     const { width, height } = getModelWindowSize(model);
     window.electronAPI?.petWindow.setSize(width, height);
   }, [modelIndex, models]);

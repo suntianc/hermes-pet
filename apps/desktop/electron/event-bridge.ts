@@ -6,6 +6,7 @@
 import { BrowserWindow } from 'electron';
 import { createServer, IncomingMessage, Server, ServerResponse } from 'http';
 import log from 'electron-log';
+import { IndexedModelAction } from './action-index';
 
 const DEFAULT_BRIDGE_PORT = 18765;
 
@@ -66,7 +67,10 @@ function normalizePayload(payload: BridgePayload): { eventName: string; data: un
   return { eventName, data: data ?? rest };
 }
 
-export function startEventBridge(getWindow: () => BrowserWindow | null): void {
+export function startEventBridge(
+  getWindow: () => BrowserWindow | null,
+  getCurrentActions: () => { modelId: string; actions: IndexedModelAction[] },
+): void {
   if (bridgeServer) return;
 
   const port = Number(process.env.VIVIPET_BRIDGE_PORT || DEFAULT_BRIDGE_PORT);
@@ -79,6 +83,22 @@ export function startEventBridge(getWindow: () => BrowserWindow | null): void {
 
     if (req.method === 'GET' && req.url === '/health') {
       sendJson(res, 200, { status: 'ok', service: 'vivipet-bridge' });
+      return;
+    }
+
+    if (req.method === 'GET' && req.url === '/actions') {
+      const { modelId, actions } = getCurrentActions();
+      sendJson(res, 200, {
+        ok: true,
+        modelId,
+        actions: actions.map((action) => ({
+          name: action.name,
+          type: action.type,
+          filePath: action.filePath,
+          displayName: action.displayName,
+          source: action.source,
+        })),
+      });
       return;
     }
 
@@ -105,4 +125,3 @@ export function startEventBridge(getWindow: () => BrowserWindow | null): void {
     log.error('[EventBridge] Failed:', err);
   });
 }
-
