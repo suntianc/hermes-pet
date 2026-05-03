@@ -4,8 +4,8 @@
       "id": "jian",
       "name": "Jian",
       "path": "/models/Jian/Jian.model3.json",
-      "window": { "width": 500, "height": 450 },
-      "canvas": { "width": 500, "height": 450 },
+      "window": { "width": 750, "height": 700 },
+      "canvas": { "width": 750, "height": 700 },
       "actions": {
         "idle": { "motion": { "group": "Idle", "index": 0 } }
       }

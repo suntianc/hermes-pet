@@ -110,14 +110,64 @@ export const PetStage: React.FC<PetStageProps> = ({
     }
   }, [modelIndex, modelLoaded, models]);
 
+  // ── Resize canvas when petScale data attribute changes ──
+  useEffect(() => {
+    if (!modelLoaded || !rendererRef.current) return;
+    const doResize = () => {
+      const scale = parseFloat(document.documentElement.dataset.petScale || '1');
+      if (!isNaN(scale)) {
+        const w = Math.round(520 * scale);
+        const h = Math.round(760 * scale);
+        rendererRef.current?.resize(w, h);
+      }
+    };
+    // Run once on mount
+    doResize();
+    // Watch for attribute changes
+    const observer = new MutationObserver(doResize);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-pet-scale'] });
+    return () => observer.disconnect();
+  }, [modelLoaded]);
+
+  // ── Reset pointer when data-reset-pointer is set ──
+  useEffect(() => {
+    if (!modelLoaded) return;
+    const doReset = () => {
+      if (document.documentElement.dataset.resetPointer === 'now') {
+        rendererRef.current?.forceResetPose();
+        document.documentElement.dataset.resetPointer = '';
+      }
+    };
+    const observer = new MutationObserver(doReset);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-reset-pointer'] });
+    return () => observer.disconnect();
+  }, [modelLoaded]);
+
   // ── Cursor tracking (eye follow) ──
   useEffect(() => {
     if (!modelLoaded) return;
 
+    // Default mouse follow to ON
+    if (document.documentElement.dataset.mouseFollow === undefined) {
+      document.documentElement.dataset.mouseFollow = 'true';
+    }
+
     let stopped = false;
     let tracking = false;
 
+    const isMouseFollowEnabled = () => document.documentElement.dataset.mouseFollow !== 'false';
+    let lastMouseFollowEnabled = isMouseFollowEnabled();
+
+    const handleMouseFollowChange = () => {
+      const enabled = isMouseFollowEnabled();
+      if (!enabled && lastMouseFollowEnabled) {
+        rendererRef.current?.resetPointer();
+      }
+      lastMouseFollowEnabled = enabled;
+    };
+
     const updateFocus = async () => {
+      if (!isMouseFollowEnabled()) return;
       if (stopped || tracking || isDraggingRef.current) return;
 
       tracking = true;
@@ -142,11 +192,14 @@ export const PetStage: React.FC<PetStageProps> = ({
     };
 
     const intervalId = window.setInterval(updateFocus, 50);
+    const observer = new MutationObserver(handleMouseFollowChange);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-mouse-follow'] });
     updateFocus();
 
     return () => {
       stopped = true;
       window.clearInterval(intervalId);
+      observer.disconnect();
     };
   }, [modelLoaded]);
 

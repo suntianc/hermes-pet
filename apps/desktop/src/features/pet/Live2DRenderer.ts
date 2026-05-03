@@ -4,6 +4,7 @@ import { BreathParameterData, CubismBreath } from '@framework/effect/cubismbreat
 import { ICubismModelSetting } from '@framework/icubismmodelsetting';
 import { CubismFramework, LogLevel, Option } from '@framework/live2dcubismframework';
 import { CubismMatrix44 } from '@framework/math/cubismmatrix44';
+import { CubismTargetPoint } from '@framework/math/cubismtargetpoint';
 import { CubismUserModel } from '@framework/model/cubismusermodel';
 import { ACubismMotion } from '@framework/motion/acubismmotion';
 import { CubismMotion } from '@framework/motion/cubismmotion';
@@ -211,6 +212,18 @@ class OfficialCubismModel extends CubismUserModel {
     this._expressionManager.stopAllMotions();
   }
 
+  resetToDefaultParameters(): void {
+    this._expressionManager.stopAllMotions();
+    this._dragManager = new CubismTargetPoint();
+    if (!this._model || !this._initialized) return;
+
+    const count = this._model.getParameterCount();
+    for (let i = 0; i < count; i += 1) {
+      this._model.setParameterValueByIndex(i, this._model.getParameterDefaultValue(i), 1);
+    }
+    this._model.saveParameters();
+  }
+
   /** Check if a motion group exists in the loaded model */
   hasMotionGroup(groupName: string): boolean {
     return this.motionGroups.includes(groupName);
@@ -225,6 +238,27 @@ class OfficialCubismModel extends CubismUserModel {
     const x = Math.max(-1, Math.min(1, (clientX / canvasWidth) * 2 - 1));
     const y = Math.max(-1, Math.min(1, -((clientY / canvasHeight) * 2 - 1)));
     this.setDragging(x, y);
+  }
+
+  /** Reset pointer to center and force pose to default. */
+  forceResetPose(): void {
+    this._dragManager = new CubismTargetPoint();
+    // Directly reset the Cubism parameters affected by drag/pointer.
+    // Idle motion doesn't cover ParamAngleX/Y/Z or ParamEyeBallX/Y,
+    // so we must set them to 0 directly.
+    if (!this._model || !this._initialized) return;
+    const id = CubismFramework.getIdManager();
+    const params = [
+      CubismDefaultParameterId.ParamAngleX,
+      CubismDefaultParameterId.ParamAngleY,
+      CubismDefaultParameterId.ParamAngleZ,
+      CubismDefaultParameterId.ParamBodyAngleX,
+      CubismDefaultParameterId.ParamEyeBallX,
+      CubismDefaultParameterId.ParamEyeBallY,
+    ];
+    for (const p of params) {
+      this._model.setParameterValueById(id.getId(p), 0, 1);
+    }
   }
 
   override release(): void {
@@ -487,7 +521,31 @@ export class Live2DRenderer implements PetRenderer {
     this.model?.setPointer(x, y, this.canvas?.width ?? this.canvasWidth, this.canvas?.height ?? this.canvasHeight);
   }
 
+  /** Reset pointer (interface requirement) */
+  resetPointer(): void {
+    this.forceResetPose();
+  }
+
+  /** Force reset pose: drag center + all angle parameters to 0. */
+  forceResetPose(): void {
+    this.model?.forceResetPose();
+  }
+
+  /** Resize the canvas to fill the given dimensions. */
+  resize(width: number, height: number): void {
+    const dpr = window.devicePixelRatio || 1;
+    this.canvasWidth = Math.round(width * dpr);
+    this.canvasHeight = Math.round(height * dpr);
+    if (this.canvas) {
+      this.canvas.width = this.canvasWidth;
+      this.canvas.height = this.canvasHeight;
+      this.canvas.style.width = `${width}px`;
+      this.canvas.style.height = `${height}px`;
+    }
+  }
+
   idle(): void {
+    this.forceResetPose();
     this.model?.startMotion('Idle', 0, PRIORITY_IDLE);
   }
 
@@ -607,12 +665,23 @@ export class Live2DRenderer implements PetRenderer {
       this.expressionResetTimer = null;
     }
 
+    if (action.expression) {
+      // Reset pose before each expressive action so the animation starts clean.
+      this.forceResetPose();
+    } else {
+      // Non-expression actions such as Idle must clear sticky motion/expression
+      // parameters from previous actions before establishing a new baseline.
+      this.model?.resetToDefaultParameters();
+    }
+
     if (action.motion) {
       await this.playMotion(action.motion.group, action.motion.index ?? 0);
     }
 
     if (action.expression) {
       await this.setExpression(action.expression);
+    } else {
+      this.resetExpression();
     }
 
     if (action.resetExpressionAfterMs) {

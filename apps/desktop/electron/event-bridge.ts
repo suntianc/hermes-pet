@@ -106,9 +106,3 @@ export function startEventBridge(getWindow: () => BrowserWindow | null): void {
   });
 }
 
-export function stopEventBridge(): void {
-  if (bridgeServer) {
-    bridgeServer.close();
-    bridgeServer = null;
-  }
-}

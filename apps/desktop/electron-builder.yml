@@ -12,6 +12,7 @@ extraResources:
   - from: public/models
     to: models
 electronDist: ../../node_modules/electron/dist
+electronVersion: 41.5.0
 mac:
   category: public.app-category.productivity
   target:

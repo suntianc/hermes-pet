@@ -7,6 +7,8 @@ export interface PetRenderer {
   setExpression(name: string): Promise<void>;
   speak(text: string): Promise<void>;
   lookAt(x: number, y: number): void;
+  resetPointer(): void;
+  resize(width: number, height: number): void;
   idle(): void;
   destroy(): void;
 }

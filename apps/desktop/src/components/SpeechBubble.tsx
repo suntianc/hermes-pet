@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from 'react';
 
+// Add the fadeIn keyframe used by bubble animation
+const styleSheet = document.createElement('style');
+styleSheet.textContent = '@keyframes fadeIn{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
+document.head.appendChild(styleSheet);
+
 interface SpeechBubbleProps {
   text: string;
   duration?: number;

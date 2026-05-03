@@ -115,7 +115,7 @@ export async function importModelViaDialog(): Promise<{
  * Import a model from a selected model3.json path.
  * Copies all model files into userData/models/<modelId>/.
  */
-export async function importModelFromPath(model3Path: string): Promise<{
+async function importModelFromPath(model3Path: string): Promise<{
   id: string;
   name: string;
   path: string;
@@ -215,22 +215,3 @@ export function listUserModels(): Array<{
   return models;
 }
 
-/**
- * Remove an imported model by ID.
- */
-export function removeUserModel(modelId: string): boolean {
-  const modelDir = resolveUserModelPath(modelId);
-  if (!fs.existsSync(modelDir)) {
-    log.warn(`[ModelManager] Model directory not found: ${modelDir}`);
-    return false;
-  }
-
-  try {
-    fs.rmSync(modelDir, { recursive: true, force: true });
-    log.info(`[ModelManager] Model removed: ${modelId}`);
-    return true;
-  } catch (err) {
-    log.error(`[ModelManager] Failed to remove model: ${err}`);
-    return false;
-  }
-}

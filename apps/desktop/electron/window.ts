@@ -1,4 +1,4 @@
-import { BrowserWindow, screen, Display, app } from 'electron';
+import { BrowserWindow, screen, app } from 'electron';
 import * as path from 'path';
 import log from 'electron-log';
 import { getIsQuitting } from './app-state';
@@ -86,12 +86,4 @@ export function getPetWindow(): BrowserWindow | null {
 
 export function setPetWindow(win: BrowserWindow): void {
   petWindow = win;
-}
-
-export function getDisplayForWindow(): Display {
-  if (!petWindow) {
-    return screen.getPrimaryDisplay();
-  }
-  const windowBounds = petWindow.getBounds();
-  return screen.getDisplayNearestPoint({ x: windowBounds.x, y: windowBounds.y });
 }

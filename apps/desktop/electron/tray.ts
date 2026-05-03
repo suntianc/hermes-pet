@@ -54,6 +54,20 @@ function buildTrayMenu(): Menu {
       click: () => sendAction('settings'),
     },
     {
+      label: 'Size',
+      submenu: [
+        { label: 'Small', click: () => sendAction('resizePet:0.7') },
+        { label: 'Medium', click: () => sendAction('resizePet:1.0') },
+        { label: 'Large', click: () => sendAction('resizePet:1.3') },
+      ],
+    },
+    {
+      label: 'Mouse Follow',
+      type: 'checkbox',
+      checked: true,
+      click: (menuItem) => sendAction(menuItem.checked ? 'mouseFollow:on' : 'mouseFollow:off'),
+    },
+    {
       label: 'Import Model...',
       click: () => sendAction('importModel'),
     },
@@ -171,12 +185,4 @@ function loadTrayIcon(): Electron.NativeImage {
 
 export function getTray(): Tray | null {
   return tray;
-}
-
-export function destroyTray(): void {
-  if (tray) {
-    tray.destroy();
-    tray = null;
-    log.info('System tray destroyed');
-  }
 }

@@ -15,6 +15,16 @@ interface ExternalEvent {
   message?: string;
 }
 
+const EXTERNAL_EVENT_TYPES = new Set([
+  'idle',
+  'thinking',
+  'speaking',
+  'tool_start',
+  'tool_success',
+  'tool_error',
+  'task_done',
+]);
+
 const App: React.FC = () => {
   const [modelIndex, setModelIndex] = useState(0);
   const [models, setModels] = useState<ModelConfig[]>([]);
@@ -151,6 +161,33 @@ const App: React.FC = () => {
     if (api?.onPetAction) {
       const cleanup = api.onPetAction((action: string, params?: unknown) => {
         console.log(`[IPC] Received action: ${action}`, params);
+
+        // Handle size change (base: 520x760)
+        if (action.startsWith('resizePet:')) {
+          const scale = parseFloat(action.split(':')[1]);
+          if (!isNaN(scale) && api.petWindow?.setSizeAnchored) {
+            const w = Math.round(520 * scale);
+            const h = Math.round(760 * scale);
+            api.petWindow.setSizeAnchored(w, h);
+            // Update canvas container to fill new window
+            // by storing the scale for PetStage to read
+            document.documentElement.dataset.petScale = String(scale);
+          }
+          return;
+        }
+
+        // Handle mouse follow toggle
+        if (action === 'mouseFollow:on' || action === 'mouseFollow:off') {
+          const enabled = action === 'mouseFollow:on';
+          document.documentElement.dataset.mouseFollow = String(enabled);
+          if (!enabled) {
+            // Signal PetStage to reset the pet's face to front
+            document.documentElement.dataset.resetPointer = 'now';
+            setAction('idle');
+          }
+          return;
+        }
+
         // Route to menu handler if it looks like a menu action
         if (action.startsWith('model:') ||
             action === 'settings' ||
@@ -159,14 +196,18 @@ const App: React.FC = () => {
           handleMenuAction(action);
           return;
         }
-        // Play the action directly (bypasses handleExternalEvent for reliable triggering)
+        if (EXTERNAL_EVENT_TYPES.has(action)) {
+          handleExternalEvent({ type: action, ...(params as Partial<ExternalEvent> | undefined) });
+          return;
+        }
+        // Play the action directly
         clearActionResetTimer();
         setAction(action as ActionType);
         scheduleIdle(5000);
       });
       return cleanup;
     }
-  }, [handleMenuAction, handleExternalEvent, showBubble]);
+  }, [clearActionResetTimer, handleExternalEvent, handleMenuAction, scheduleIdle, setAction]);
 
   return (
     <div style={{
