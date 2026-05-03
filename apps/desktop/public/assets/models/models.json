@@ -7,21 +7,7 @@
       "window": { "width": 500, "height": 450 },
       "canvas": { "width": 500, "height": 450 },
       "actions": {
-        "idle": { "motion": { "group": "Idle", "index": 0 } },
-        "thinking": { "motion": { "group": "Idle", "index": 0 }, "expression": "StarEyes" },
-        "speaking": { "motion": { "group": "Idle", "index": 0 }, "expression": "Blush" },
-        "happy": { "motion": { "group": "Idle", "index": 0 }, "expression": "HeartEyes" },
-        "success": { "motion": { "group": "Idle", "index": 0 }, "expression": "StarEyes" },
-        "error": { "motion": { "group": "Idle", "index": 0 }, "expression": "DarkFace" },
-        "confused": { "motion": { "group": "Idle", "index": 0 }, "expression": "WhiteEyes" },
-        "angry": { "motion": { "group": "Idle", "index": 0 }, "expression": "Angry" },
-        "searching": { "motion": { "group": "Idle", "index": 0 }, "expression": "StarEyes" },
-        "reading": { "motion": { "group": "Idle", "index": 0 }, "expression": "RightHand" },
-        "coding": { "motion": { "group": "Idle", "index": 0 }, "expression": "LeftHand" },
-        "terminal": { "motion": { "group": "Idle", "index": 0 }, "expression": "WhiteEyes" },
-        "dragging": { "motion": { "group": "Idle", "index": 0 }, "expression": "Blush" },
-        "clicked": { "motion": { "group": "Idle", "index": 0 }, "expression": "Blush", "resetExpressionAfterMs": 700 },
-        "doubleClicked": { "motion": { "group": "Idle", "index": 0 }, "expression": "HeartEyes", "resetExpressionAfterMs": 1000 }
+        "idle": { "motion": { "group": "Idle", "index": 0 } }
       }
     }
   ]

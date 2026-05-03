@@ -624,72 +624,31 @@ export class Live2DRenderer implements PetRenderer {
   }
 
   /**
-   * Resolve an action by auto-detecting motions and expressions from the loaded model.
+   * Resolve an action by auto-detecting the motion group from the loaded model.
+   * Expressions are NOT automatically applied — the user wants full animations,
+   * not expression-only swaps. When model creators add proper motion groups
+   * (Thinking, Speaking, Coding, etc.) to their model3.json, they will be
+   * discovered here automatically.
    *
-   * Resolution order for motion:
+   * Resolution order:
    *   1. Match action name as motion group (capitalized: "thinking" → "Thinking")
    *   2. Fallback to "Idle" group
-   *
-   * Resolution order for expression:
-   *   1. Use the default expression mapping for this action
-   *   2. Only apply if the model actually has this expression loaded
    */
   private resolveAction(actionName: string): ModelActionConfig | undefined {
     const model = this.model;
-    if (!model) return this.hardcodedIdle();
+    if (!model) return { motion: { group: 'Idle', index: 0 } };
 
-    const config: ModelActionConfig = {};
-
-    // ---- Resolve motion ----
     const capitalized = actionName.charAt(0).toUpperCase() + actionName.slice(1); // "thinking" → "Thinking"
     if (model.hasMotionGroup(capitalized)) {
-      config.motion = { group: capitalized, index: 0 };
-    } else if (model.hasMotionGroup(actionName)) {
-      config.motion = { group: actionName, index: 0 };
-    } else if (model.hasMotionGroup('Idle')) {
-      config.motion = { group: 'Idle', index: 0 };
+      return { motion: { group: capitalized, index: 0 } };
+    }
+    if (model.hasMotionGroup(actionName)) {
+      return { motion: { group: actionName, index: 0 } };
+    }
+    if (model.hasMotionGroup('Idle')) {
+      return { motion: { group: 'Idle', index: 0 } };
     }
 
-    // ---- Resolve expression ----
-    const exprName = this.getExpressionForAction(actionName);
-    if (exprName && model.hasExpression(exprName)) {
-      config.expression = exprName;
-    }
-
-    return config.motion ? config : undefined;
-  }
-
-  /** Hardcoded Idle fallback when no model is loaded */
-  private hardcodedIdle(): ModelActionConfig {
-    return { motion: { group: 'Idle', index: 0 } };
-  }
-
-  /**
-   * Map semantic action names to expression names.
-   * Model creators should follow this convention when naming their .exp3.json files.
-   */
-  private getExpressionForAction(actionName: string): string | undefined {
-    const map: Record<string, string | undefined> = {
-      idle: undefined,
-      thinking: 'StarEyes',
-      speaking: 'Blush',
-      happy: 'HeartEyes',
-      success: 'HeartEyes',
-      error: 'DarkFace',
-      confused: 'WhiteEyes',
-      angry: 'Angry',
-      surprised: 'Surprised',
-      searching: 'StarEyes',
-      reading: 'RightHand',
-      coding: 'LeftHand',
-      terminal: 'WhiteEyes',
-      dragging: 'Blush',
-      clicked: 'Blush',
-      doubleClicked: 'HeartEyes',
-      sleep: 'Sleep',
-      wake: undefined,
-      rightClickMenu: undefined,
-    };
-    return map[actionName];
+    return undefined;
   }
 }

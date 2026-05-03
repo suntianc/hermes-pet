@@ -164,26 +164,11 @@ setExpression("StarEyes")
   → 没有？                 → 忽略（不报错）
 ```
 
-### 4.3 表情自动映射
+### 4.3 表情策略
 
-如果没有在 `models.json` 中手动配置表情，系统会根据动作名自动匹配合适的表情：
+**表情不在动作播放时自动叠加。** 每个动作应当使用完整的动画文件（`.motion3.json`）驱动所有相关参数，包括表情参数。如果模型需要特定表情状态，应在 motion 文件中直接包含对应的参数曲线。
 
-| 动作 | 自动表情 |
-|------|---------|
-| thinking | StarEyes |
-| speaking | Blush |
-| happy | HeartEyes |
-| success | HeartEyes |
-| error | DarkFace |
-| confused | WhiteEyes |
-| angry | Angry |
-| searching | StarEyes |
-| reading | RightHand |
-| coding | LeftHand |
-| terminal | WhiteEyes |
-| dragging | Blush |
-| clicked | Blush |
-| doubleClicked | HeartEyes |
+> 设计理念：动作切换是完整的动画替换，而不是"Idle 动画 + 表情覆盖"。
 
 ---
 
