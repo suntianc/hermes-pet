@@ -11,8 +11,6 @@ interface PetStageProps {
   onDoubleClick?: () => void;
   onDragStart?: () => void;
   onDragEnd?: () => void;
-  onContextMenu?: (x: number, y: number) => void;
-  forceInteractive?: boolean;
 }
 
 export const PetStage: React.FC<PetStageProps> = ({
@@ -24,8 +22,6 @@ export const PetStage: React.FC<PetStageProps> = ({
   onDoubleClick: handlePetDoubleClick,
   onDragStart,
   onDragEnd,
-  onContextMenu,
-  forceInteractive = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -114,11 +110,7 @@ export const PetStage: React.FC<PetStageProps> = ({
     }
   }, [modelIndex, modelLoaded, models]);
 
-  useEffect(() => {
-    if (!modelLoaded) return;
-    setMousePassthrough(!forceInteractive);
-  }, [forceInteractive, modelLoaded]);
-
+  // ── Cursor tracking (eye follow) ──
   useEffect(() => {
     if (!modelLoaded) return;
 
@@ -158,7 +150,7 @@ export const PetStage: React.FC<PetStageProps> = ({
     };
   }, [modelLoaded]);
 
-  // ── Drag: native DOM events (capture phase) + rAF throttle ──
+  // ── Mouse passthrough & drag ──
   useEffect(() => {
     if (!modelLoaded) return;
     const container = containerRef.current;
@@ -169,7 +161,7 @@ export const PetStage: React.FC<PetStageProps> = ({
 
     const onMouseDown = (e: MouseEvent) => {
       if (e.button !== 0) return;
-      if (!forceInteractive && !isPointOnPet(e.clientX, e.clientY)) return;
+      if (!isPointOnPet(e.clientX, e.clientY)) return;
 
       e.preventDefault();
       didMove = false;
@@ -179,7 +171,7 @@ export const PetStage: React.FC<PetStageProps> = ({
     };
 
     const onMouseMove = (e: MouseEvent) => {
-      if (!forceInteractive && !isDraggingRef.current) {
+      if (!isDraggingRef.current) {
         setMousePassthrough(!isPointOnPet(e.clientX, e.clientY));
       }
 
@@ -199,7 +191,7 @@ export const PetStage: React.FC<PetStageProps> = ({
       if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
       window.electronAPI?.petWindow.endDrag();
       onDragEnd?.();
-      if (!forceInteractive && !didMove) {
+      if (!didMove) {
         setMousePassthrough(true);
       }
     };
@@ -215,16 +207,16 @@ export const PetStage: React.FC<PetStageProps> = ({
       if (rafId) cancelAnimationFrame(rafId);
       window.electronAPI?.petWindow.endDrag();
     };
-  }, [forceInteractive, modelLoaded, onDragStart, onDragEnd]);
+  }, [modelLoaded, onDragStart, onDragEnd]);
 
-  // ── Click & context menu ──
+  // ── Click ──
   const lastClickTime = useRef(0);
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const onClick = (e: MouseEvent) => {
-      if (!forceInteractive && !isPointOnPet(e.clientX, e.clientY)) return;
+      if (!isPointOnPet(e.clientX, e.clientY)) return;
       const now = Date.now();
       if (now - lastClickTime.current < 300) {
         handlePetDoubleClick?.();
@@ -235,20 +227,12 @@ export const PetStage: React.FC<PetStageProps> = ({
       }
     };
 
-    const onContext = (e: MouseEvent) => {
-      if (!forceInteractive && !isPointOnPet(e.clientX, e.clientY)) return;
-      e.preventDefault();
-      onContextMenu?.(e.clientX, e.clientY);
-    };
-
     container.addEventListener('click', onClick, true);
-    container.addEventListener('contextmenu', onContext, true);
 
     return () => {
       container.removeEventListener('click', onClick, true);
-      container.removeEventListener('contextmenu', onContext, true);
     };
-  }, [forceInteractive, handlePetClick, handlePetDoubleClick, onContextMenu]);
+  }, [handlePetClick, handlePetDoubleClick]);
 
   return (
     <div

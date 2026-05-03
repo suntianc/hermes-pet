@@ -17,6 +17,7 @@ export interface PetWindowAPI {
   getSize: () => Promise<{ width: number; height: number }>;
   setSize: (width: number, height: number) => void;
   isAlwaysOnTop: () => Promise<boolean>;
+  setModelNames: (names: string[]) => void;
 }
 
 export interface PetTrayAPI {
@@ -24,9 +25,26 @@ export interface PetTrayAPI {
   setToolTip: (tooltip: string) => void;
 }
 
+export interface PetModelAPI {
+  import: () => Promise<{
+    id: string;
+    name: string;
+    path: string;
+    window?: { width: number; height: number };
+  } | null>;
+  listUserModels: () => Promise<Array<{
+    id: string;
+    name: string;
+    path: string;
+    window?: { width: number; height: number };
+  }>>;
+  remove: (modelId: string) => Promise<boolean>;
+}
+
 export interface ElectronAPI {
   petWindow: PetWindowAPI;
   petTray: PetTrayAPI;
+  petModel: PetModelAPI;
   onPetAction: (callback: (action: string, params?: unknown) => void) => () => void;
 }
 
@@ -50,6 +68,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getSize: () => ipcRenderer.invoke('pet:window:getSize'),
     setSize: (width: number, height: number) => ipcRenderer.send('pet:window:setSize', width, height),
     isAlwaysOnTop: () => ipcRenderer.invoke('pet:window:isAlwaysOnTop'),
+    setModelNames: (names: string[]) => ipcRenderer.send('pet:tray:updateModelNames', names),
   },
 
   // Tray controls
@@ -63,6 +82,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = (_event: IpcRendererEvent, action: string, params?: unknown) => callback(action, params);
     ipcRenderer.on('pet:action', handler);
     return () => ipcRenderer.removeListener('pet:action', handler);
+  },
+
+  // Model management
+  petModel: {
+    import: () => ipcRenderer.invoke('pet:model:import'),
+    listUserModels: () => ipcRenderer.invoke('pet:model:listUserModels'),
+    remove: (modelId: string) => ipcRenderer.invoke('pet:model:remove', modelId),
   },
 } as ElectronAPI);
 

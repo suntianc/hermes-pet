@@ -1,7 +1,6 @@
 import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { PetStage } from './components/PetStage';
 import { SpeechBubble } from './components/SpeechBubble';
-import { PetContextMenu } from './components/PetContextMenu';
 import { usePetStore } from './stores/pet-store';
 import { ActionType } from './features/actions/action-schema';
 import { loadModelConfigs, ModelConfig } from './features/pet/model-registry';
@@ -19,19 +18,16 @@ interface ExternalEvent {
 const App: React.FC = () => {
   const [modelIndex, setModelIndex] = useState(0);
   const [models, setModels] = useState<ModelConfig[]>([]);
+  const [modelRevision, setModelRevision] = useState(0);
   const actionResetTimerRef = useRef<number | null>(null);
   const {
     currentAction,
     actionRevision,
     bubbleText,
     bubbleDuration,
-    isContextMenuOpen,
-    contextMenuPosition,
     showBubble,
     hideBubble,
     setAction,
-    openContextMenu,
-    closeContextMenu,
   } = usePetStore();
 
   const clearActionResetTimer = useCallback(() => {
@@ -85,12 +81,15 @@ const App: React.FC = () => {
       if (cancelled) return;
       setModels(loadedModels);
       setModelIndex((index) => Math.min(index, loadedModels.length - 1));
+      // Sync model names to tray menu
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).electronAPI?.petWindow?.setModelNames?.(loadedModels.map((m) => m.name));
     });
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [modelRevision]);
 
   const handleClick = useCallback(() => {
     clearActionResetTimer();
@@ -114,16 +113,7 @@ const App: React.FC = () => {
     setAction('idle');
   }, [clearActionResetTimer, setAction]);
 
-  const handleContextMenu = useCallback((x: number, y: number) => {
-    openContextMenu(x, y);
-  }, [openContextMenu]);
-
-  const handleCloseContextMenu = useCallback(() => {
-    closeContextMenu();
-  }, [closeContextMenu]);
-
   const handleMenuAction = useCallback((action: string) => {
-    closeContextMenu();
     // Handle model switching
     const modelMatch = action.match(/^model:(\d+)$/);
     if (modelMatch) {
@@ -135,8 +125,34 @@ const App: React.FC = () => {
       case 'settings':
         showBubble('Settings coming soon...', 2000);
         break;
+      case 'importModel':
+        // Import via IPC, trigger model reload on completion
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (window as any).electronAPI?.petModel?.import().then((result: any) => {
+          if (result) {
+            showBubble('Model imported! Reloading...', 1500);
+            setModelRevision((v) => v + 1);
+          }
+        });
+        break;
+      case 'refreshModels':
+        showBubble('Model imported! Reloading...', 1500);
+        setModelRevision((v) => v + 1);
+        break;
     }
-  }, [closeContextMenu, showBubble]);
+  }, [showBubble]);
+
+  // Listen for actions from tray menu (sent via pet:action IPC)
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const api = (window as any).electronAPI;
+    if (api?.onPetAction) {
+      const cleanup = api.onPetAction((action: string) => {
+        handleMenuAction(action);
+      });
+      return cleanup;
+    }
+  }, [handleMenuAction]);
 
   return (
     <div style={{
@@ -154,8 +170,6 @@ const App: React.FC = () => {
         onDoubleClick={handleDoubleClick}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        onContextMenu={handleContextMenu}
-        forceInteractive={isContextMenuOpen}
       />
 
       {bubbleText && (
@@ -163,16 +177,6 @@ const App: React.FC = () => {
           text={bubbleText}
           duration={bubbleDuration}
           onClose={hideBubble}
-        />
-      )}
-
-      {isContextMenuOpen && (
-        <PetContextMenu
-          x={contextMenuPosition.x}
-          y={contextMenuPosition.y}
-          models={models}
-          onAction={handleMenuAction}
-          onClose={handleCloseContextMenu}
         />
       )}
 

@@ -1,7 +1,8 @@
 import { ipcMain, screen, app } from 'electron';
 import log from 'electron-log';
 import { getPetWindow } from './window';
-import { getTray } from './tray';
+import { getTray, updateTrayModelNames } from './tray';
+import { importModelViaDialog, listUserModels, removeUserModel } from './model-manager';
 
 let dragSession: {
   pointerX: number;
@@ -152,6 +153,24 @@ export function registerIpcHandlers(): void {
     if (tray) {
       tray.setToolTip(tooltip);
     }
+  });
+
+  // ---- Tray model list sync ----
+  ipcMain.on('pet:tray:updateModelNames', (_event, names: string[]) => {
+    updateTrayModelNames(names);
+  });
+
+  // ---- Model management ----
+  ipcMain.handle('pet:model:import', async () => {
+    return importModelViaDialog();
+  });
+
+  ipcMain.handle('pet:model:listUserModels', async () => {
+    return listUserModels();
+  });
+
+  ipcMain.handle('pet:model:remove', async (_event, modelId: string) => {
+    return removeUserModel(modelId);
   });
 
   log.info('IPC handlers registered');

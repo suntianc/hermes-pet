@@ -1,26 +1,32 @@
-import { Tray, Menu, nativeImage, BrowserWindow, app } from 'electron';
+import { Tray, Menu, nativeImage, BrowserWindow, app, MenuItemConstructorOptions } from 'electron';
 import * as path from 'path';
 import log from 'electron-log';
 import { setIsQuitting } from './app-state';
 
 let tray: Tray | null = null;
+let currentPetWindow: BrowserWindow | null = null;
+let modelNames: string[] = [];
 
-export function createTray(petWindow: BrowserWindow): Tray {
-  const trayIcon = loadTrayIcon();
+/** Send an action event to the renderer process. */
+function sendAction(action: string): void {
+  currentPetWindow?.webContents.send('pet:action', action);
+}
 
-  tray = new Tray(trayIcon);
-  tray.setToolTip('ViviPet');
-
-  const contextMenu = Menu.buildFromTemplate([
+/** Build the full tray context menu with current model list. */
+function buildTrayMenu(): Menu {
+  // Base items
+  const template: MenuItemConstructorOptions[] = [
     {
       label: 'Show/Hide',
       click: () => {
-        if (petWindow.isVisible()) {
-          petWindow.hide();
-          app.dock?.hide(); // Hide Dock indicator when hiding
+        const win = currentPetWindow;
+        if (!win) return;
+        if (win.isVisible()) {
+          win.hide();
+          app.dock?.hide();
         } else {
-          petWindow.show();
-          app.dock?.show(); // Show Dock indicator when revealing
+          win.show();
+          app.dock?.show();
         }
       },
     },
@@ -29,7 +35,7 @@ export function createTray(petWindow: BrowserWindow): Tray {
       type: 'checkbox',
       checked: true,
       click: (menuItem) => {
-        petWindow.setAlwaysOnTop(menuItem.checked);
+        currentPetWindow?.setAlwaysOnTop(menuItem.checked);
       },
     },
     {
@@ -38,28 +44,50 @@ export function createTray(petWindow: BrowserWindow): Tray {
       checked: false,
       click: (menuItem) => {
         const on = menuItem.checked;
-        petWindow.setIgnoreMouseEvents(on, { forward: true });
+        currentPetWindow?.setIgnoreMouseEvents(on, { forward: true });
         log.info(`Mouse passthrough: ${on}`);
       },
     },
     { type: 'separator' },
     {
       label: 'Settings',
-      click: () => {
-        petWindow.webContents.send('pet:action', 'openSettings');
-      },
+      click: () => sendAction('settings'),
+    },
+    {
+      label: 'Import Model...',
+      click: () => sendAction('importModel'),
     },
     { type: 'separator' },
-    {
-      label: 'Quit',
-      click: () => {
-        setIsQuitting(true); // Must be set before app.quit() to allow window close
-        app.quit();
-      },
-    },
-  ]);
+  ];
 
-  tray.setContextMenu(contextMenu);
+  // Switch Model submenu (dynamic)
+  if (modelNames.length > 1) {
+    const modelItems: MenuItemConstructorOptions[] = modelNames.map((name, index) => ({
+      label: name,
+      click: () => sendAction(`model:${index}`),
+    }));
+    template.push({ label: 'Switch Model', submenu: modelItems });
+    template.push({ type: 'separator' });
+  }
+
+  template.push({
+    label: 'Quit',
+    click: () => {
+      setIsQuitting(true);
+      app.quit();
+    },
+  });
+
+  return Menu.buildFromTemplate(template);
+}
+
+export function createTray(petWindow: BrowserWindow): Tray {
+  currentPetWindow = petWindow;
+  const trayIcon = loadTrayIcon();
+
+  tray = new Tray(trayIcon);
+  tray.setToolTip('ViviPet');
+  tray.setContextMenu(buildTrayMenu());
 
   // Double-click to show/hide
   tray.on('double-click', () => {
@@ -74,6 +102,18 @@ export function createTray(petWindow: BrowserWindow): Tray {
 
   log.info('System tray created');
   return tray;
+}
+
+/**
+ * Update the model list shown in the tray's Switch Model submenu.
+ * Called from renderer when models are loaded or changed.
+ */
+export function updateTrayModelNames(names: string[]): void {
+  modelNames = names;
+  if (tray) {
+    tray.setContextMenu(buildTrayMenu());
+    log.info(`Tray menu updated with ${names.length} model(s)`);
+  }
 }
 
 /**

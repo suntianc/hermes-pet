@@ -73,21 +73,50 @@ export function getModelCanvasSize(model: ModelConfig): { width: number; height:
 }
 
 export async function loadModelConfigs(): Promise<ModelConfig[]> {
+  // 1. Load built-in models from the bundled registry
+  let builtIn: ModelConfig[] = [];
   try {
     const response = await fetch(resolvePublicAsset(MODEL_REGISTRY_PATH), { cache: 'no-cache' });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+    if (response.ok) {
+      const registry = await response.json() as ModelRegistryFile;
+      builtIn = (registry.models ?? []).filter(isValidModelConfig);
     }
-
-    const registry = await response.json() as ModelRegistryFile;
-    const models = (registry.models ?? []).filter(isValidModelConfig);
-    if (models.length === 0) {
-      throw new Error('No valid models found');
-    }
-
-    return models;
   } catch (err) {
-    console.warn('[ModelRegistry] Failed to load model registry, using fallback:', err);
-    return FALLBACK_MODELS;
+    console.warn('[ModelRegistry] Failed to load model registry:', err);
   }
+
+  if (builtIn.length === 0) {
+    console.warn('[ModelRegistry] No built-in models, using fallback');
+    builtIn = FALLBACK_MODELS;
+  }
+
+  // 2. Load user-imported models (if available via IPC)
+  let userModels: ModelConfig[] = [];
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const remote = (window as any).electronAPI?.petModel;
+    if (remote?.listUserModels) {
+      const imported: Array<{ id: string; name: string; path: string; window?: { width: number; height: number } }>
+        = await remote.listUserModels();
+      userModels = imported.filter((m): m is typeof m & { id: string; name: string; path: string } =>
+        Boolean(m.id && m.name && m.path),
+      ).map((m) => ({
+        id: m.id,
+        name: m.name,
+        path: m.path,
+        window: m.window,
+        canvas: m.window ? { width: m.window.width, height: m.window.height } : undefined,
+      }));
+    }
+  } catch (err) {
+    console.warn('[ModelRegistry] Failed to list user models:', err);
+  }
+
+  // 3. Merge: user models override built-in models with same ID
+  const builtInMap = new Map(builtIn.map((m) => [m.id, m]));
+  for (const userModel of userModels) {
+    builtInMap.set(userModel.id, userModel);
+  }
+
+  return Array.from(builtInMap.values());
 }

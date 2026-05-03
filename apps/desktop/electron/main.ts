@@ -4,6 +4,7 @@ import { createPetWindow, getPetWindow, setPetWindow } from './window';
 import { createTray } from './tray';
 import { registerIpcHandlers } from './ipc';
 import { startEventBridge } from './event-bridge';
+import { initModelProtocol } from './model-manager';
 
 // Configure logging
 log.transports.file.level = 'info';
@@ -39,6 +40,9 @@ if (!gotTheLock) {
 
 app.whenReady().then(async () => {
   log.info('App is ready');
+
+  // Initialize custom protocol for user-imported model assets
+  initModelProtocol();
 
   try {
     const petWindow = createPetWindow();
