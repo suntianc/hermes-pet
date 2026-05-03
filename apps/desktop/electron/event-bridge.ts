@@ -91,13 +91,7 @@ export function startEventBridge(
       sendJson(res, 200, {
         ok: true,
         modelId,
-        actions: actions.map((action) => ({
-          name: action.name,
-          type: action.type,
-          filePath: action.filePath,
-          displayName: action.displayName,
-          source: action.source,
-        })),
+        actions: actions.map((action) => action.name),
       });
       return;
     }

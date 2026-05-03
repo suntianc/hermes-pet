@@ -67,26 +67,6 @@ function normalizeActionName(filePath: string, suffix: string): string {
   return path.basename(filePath, suffix).trim();
 }
 
-function walkFiles(dir: string, matcher: (filePath: string) => boolean): string[] {
-  if (!fs.existsSync(dir)) return [];
-
-  const files: string[] = [];
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const entryPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...walkFiles(entryPath, matcher));
-    } else if (matcher(entryPath)) {
-      files.push(entryPath);
-    }
-  }
-  return files;
-}
-
-function toRelativePath(rootDir: string, filePath: string): string {
-  return path.relative(rootDir, filePath).replace(/\\/g, '/');
-}
-
 export function initActionIndex(): void {
   getDb();
   log.info('[ActionIndex] SQLite action index initialized');
@@ -108,7 +88,7 @@ export function indexModelActions(options: {
 }): IndexedModelAction[] {
   const database = getDb();
   const updatedAt = new Date().toISOString();
-  const actions = scanModelActions(options.modelId, options.modelPath, options.rootDir);
+  const actions = scanModelActions(options.modelId, options.modelPath);
 
   database.prepare(`
     INSERT INTO models (id, name, model_path, root_dir, updated_at)
@@ -145,11 +125,11 @@ export function indexModelActions(options: {
   return actions;
 }
 
-export function scanModelActions(modelId: string, modelPath: string, rootDir: string): IndexedModelAction[] {
+export function scanModelActions(modelId: string, modelPath: string): IndexedModelAction[] {
   const byKey = new Map<string, IndexedModelAction>();
   const addAction = (action: IndexedModelAction) => {
     const key = `${action.type}:${action.name}`;
-    if (!byKey.has(key) || byKey.get(key)?.source !== 'model3_json') {
+    if (!byKey.has(key)) {
       byKey.set(key, action);
     }
   };
@@ -174,51 +154,8 @@ export function scanModelActions(modelId: string, modelPath: string, rootDir: st
       });
     }
 
-    const expressions = raw.FileReferences?.Expressions ?? [];
-    for (const expression of expressions as Array<{ Name?: string; File?: string }>) {
-      if (!expression.File) continue;
-      const name = expression.Name || normalizeActionName(expression.File, '.exp3.json');
-      addAction({
-        modelId,
-        name,
-        type: 'expression',
-        filePath: expression.File.replace(/\\/g, '/'),
-        displayName: name,
-        source: 'model3_json',
-      });
-    }
   } catch (err) {
     log.warn(`[ActionIndex] Failed to parse model3 actions: ${modelPath}`, err);
-  }
-
-  const motionDir = path.join(rootDir, 'motion');
-  for (const filePath of walkFiles(motionDir, (file) => file.endsWith('.motion3.json'))) {
-    const relPath = toRelativePath(rootDir, filePath);
-    const name = normalizeActionName(filePath, '.motion3.json');
-    addAction({
-      modelId,
-      name,
-      type: 'motion',
-      groupName: name,
-      indexNo: 0,
-      filePath: relPath,
-      displayName: name,
-      source: 'motion_folder',
-    });
-  }
-
-  const expressionDir = path.join(rootDir, 'expression');
-  for (const filePath of walkFiles(expressionDir, (file) => file.endsWith('.exp3.json'))) {
-    const relPath = toRelativePath(rootDir, filePath);
-    const name = normalizeActionName(filePath, '.exp3.json');
-    addAction({
-      modelId,
-      name,
-      type: 'expression',
-      filePath: relPath,
-      displayName: name,
-      source: 'expression_folder',
-    });
   }
 
   return Array.from(byKey.values()).sort((a, b) => a.name.localeCompare(b.name));

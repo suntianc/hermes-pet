@@ -68,7 +68,7 @@ const App: React.FC = () => {
       case 'thinking': setContinuousAction('thinking'); break;
       case 'speaking':
         setContinuousAction('speaking');
-        if (event.text) showBubble(event.text, 5000);
+        // text 参数保留用于后续 TTS
         break;
       case 'tool_start': {
         const tool = event.tool || 'coding';
@@ -76,10 +76,10 @@ const App: React.FC = () => {
         setContinuousAction(actionMap[tool] || 'coding');
         break;
       }
-      case 'tool_success': setAction('success'); showBubble('Done!', 2000); scheduleIdle(2000); break;
-      case 'tool_error': setAction('error'); showBubble(event.error || 'Error occurred', 3000); scheduleIdle(3000); break;
-      case 'task_done': setAction('happy'); showBubble(event.summary || 'Task completed!', 3000); scheduleIdle(3000, hideBubble); break;
-      case 'error': setAction('error'); showBubble(event.message || 'Error', 3000); break;
+      case 'tool_success': setAction('success'); scheduleIdle(2000); break;
+      case 'tool_error': setAction('error'); scheduleIdle(3000); break;
+      case 'task_done': setAction('happy'); scheduleIdle(3000); break;
+      case 'error': setAction('error'); break;
       default: break;
     }
   }, [clearActionResetTimer, currentAction, hideBubble, scheduleIdle, setAction, showBubble]);
