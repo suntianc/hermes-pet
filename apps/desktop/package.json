@@ -2,7 +2,7 @@
   "name": "vivi-pet",
   "version": "0.1.0",
   "description": "AI-driven Live2D desktop companion",
-  "author": "Hermes Team",
+  "author": "Hermes Team <team@vivipet.app>",
   "repository": "suntianc/ViviPet",
   "main": "dist/main/main.js",
   "scripts": {
