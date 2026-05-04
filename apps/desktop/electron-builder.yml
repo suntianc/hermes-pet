@@ -19,6 +19,13 @@ mac:
     - dmg
     - zip
   icon: assets/icon.png
+linux:
+  category: Utility
+  target:
+    - AppImage
+    - deb
+    - tar.gz
+  icon: assets/icon.png
 win:
   target:
     - nsis

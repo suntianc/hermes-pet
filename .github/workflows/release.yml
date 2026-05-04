@@ -22,20 +22,28 @@ env:
 
 jobs:
   build:
-    name: Build & Package (${{ matrix.os }})
+    name: Build & Package (${{ matrix.target }})
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - macos-latest
-          - windows-latest
         include:
-          - os: macos-latest
-            build-args: --mac
-            artifact-name: ViviPet-macOS
-            # macOS 打包环境变量
+          - target: mac-arm64
+            os: macos-latest
+            build-args: --mac --arm64
+            artifact-name: ViviPet-macOS-arm64
             csc-identity: false
-          - os: windows-latest
+          - target: mac-x64
+            os: macos-latest
+            build-args: --mac --x64
+            artifact-name: ViviPet-macOS-x64
+            csc-identity: false
+          - target: linux
+            os: ubuntu-latest
+            build-args: --linux
+            artifact-name: ViviPet-Linux
+            csc-identity: true
+          - target: windows
+            os: windows-latest
             build-args: --win
             artifact-name: ViviPet-Windows
             csc-identity: true
@@ -68,7 +76,7 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.csc-identity }}
 
-      - name: Package (${{ matrix.os }})
+      - name: Package (${{ matrix.target }})
         run: npx electron-builder ${{ matrix.build-args }} --publish never
         working-directory: apps/desktop
         env:
@@ -76,7 +84,7 @@ jobs:
           # electron-builder 上传到 GitHub Release 时使用
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload artifacts (${{ matrix.os }})
+      - name: Upload artifacts (${{ matrix.target }})
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact-name }}
@@ -84,6 +92,9 @@ jobs:
             apps/desktop/release/*.dmg
             apps/desktop/release/*.zip
             apps/desktop/release/*.exe
+            apps/desktop/release/*.AppImage
+            apps/desktop/release/*.deb
+            apps/desktop/release/*.tar.gz
             apps/desktop/release/*.yml
             apps/desktop/release/*.blockmap
           if-no-files-found: warn
