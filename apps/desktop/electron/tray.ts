@@ -2,6 +2,7 @@ import { Tray, Menu, nativeImage, BrowserWindow, app, MenuItemConstructorOptions
 import * as path from 'path';
 import log from 'electron-log';
 import { setIsQuitting } from './app-state';
+import { getTTSManager } from './tts';
 
 let tray: Tray | null = null;
 let currentPetWindow: BrowserWindow | null = null;
@@ -10,6 +11,66 @@ let modelNames: string[] = [];
 /** Send an action event to the renderer process. */
 function sendAction(action: string): void {
   currentPetWindow?.webContents.send('pet:action', action);
+}
+
+/** Build the TTS submenu items (inline, no nesting to keep click handling simple). */
+function buildTTSSubmenu(): MenuItemConstructorOptions[] {
+  const tts = getTTSManager();
+  const config = tts.getConfig();
+
+  const sourceLabels: Record<string, string> = {
+    none: 'Disabled',
+    system: 'System (macOS)',
+    local: 'Local Service',
+    cloud: 'Cloud API',
+  };
+
+  const items: MenuItemConstructorOptions[] = [];
+
+  // TTS enable/disable toggle
+  items.push({
+    label: 'Enable TTS',
+    type: 'checkbox',
+    checked: config.enabled,
+    click: (menuItem) => {
+      const newEnabled = menuItem.checked;
+      tts.setConfig({ enabled: newEnabled });
+      if (newEnabled && config.source === 'none') {
+        // 启用时若 source 为 none，自动切到 system
+        tts.setConfig({ source: 'system' });
+      }
+      if (tray) tray.setContextMenu(buildTrayMenu());
+      log.info(`[Tray] TTS ${newEnabled ? 'enabled' : 'disabled'}`);
+    },
+  });
+
+  // Source selection
+  const sources = ['none', 'system', 'local', 'cloud'] as const;
+  items.push({
+    label: 'Source',
+    submenu: sources.map((src) => ({
+      label: sourceLabels[src],
+      type: 'radio' as const,
+      checked: config.source === src,
+      click: () => {
+        tts.setConfig({ source: src, enabled: src !== 'none' });
+        if (tray) tray.setContextMenu(buildTrayMenu());
+        log.info(`[Tray] TTS source: ${src}`);
+      },
+    })),
+  });
+
+  // 状态信息
+  if (config.enabled && config.source === 'system') {
+    const voice = config.system?.voice || 'default';
+    items.push({ type: 'separator' });
+    items.push({
+      label: `Voice: ${voice}`,
+      enabled: false,
+    });
+  }
+
+  return items;
 }
 
 /** Build the full tray context menu with current model list. */
@@ -51,6 +112,7 @@ function buildTrayMenu(): Menu {
     { type: 'separator' },
     {
       label: 'Settings',
+      enabled: false,
       click: () => sendAction('settings'),
     },
     {
@@ -67,6 +129,9 @@ function buildTrayMenu(): Menu {
       checked: true,
       click: (menuItem) => sendAction(menuItem.checked ? 'mouseFollow:on' : 'mouseFollow:off'),
     },
+    { type: 'separator' },
+    ...buildTTSSubmenu(),
+    { type: 'separator' },
     {
       label: 'Import Model...',
       click: () => sendAction('importModel'),

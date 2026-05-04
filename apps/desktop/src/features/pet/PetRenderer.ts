@@ -5,6 +5,7 @@ export interface PetRenderer {
   playAction(actionName: string): Promise<void>;
   playMotion(group: string, index?: number): Promise<void>;
   setExpression(name: string): Promise<void>;
+  setSpeaking(speaking: boolean, amplitude?: number): void;
   speak(text: string): Promise<void>;
   lookAt(x: number, y: number): void;
   resetPointer(): void;

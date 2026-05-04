@@ -7,6 +7,8 @@ interface PetStageProps {
   actionRevision?: number;
   models: ModelConfig[];
   modelIndex?: number;
+  isSpeaking?: boolean;
+  ttsAmplitude?: number;
   onClick?: () => void;
   onDoubleClick?: () => void;
   onDragStart?: () => void;
@@ -18,6 +20,8 @@ export const PetStage: React.FC<PetStageProps> = ({
   actionRevision = 0,
   models,
   modelIndex = 0,
+  isSpeaking = false,
+  ttsAmplitude = 0,
   onClick: handlePetClick,
   onDoubleClick: handlePetDoubleClick,
   onDragStart,
@@ -204,6 +208,17 @@ export const PetStage: React.FC<PetStageProps> = ({
       observer.disconnect();
     };
   }, [modelLoaded]);
+
+  // ── Lip sync: 说话时嘴型动画 ──
+  useEffect(() => {
+    if (!modelLoaded || !rendererRef.current) return;
+
+    if (isSpeaking) {
+      rendererRef.current.setSpeaking(true, ttsAmplitude);
+    } else {
+      rendererRef.current.setSpeaking(false, 0);
+    }
+  }, [isSpeaking, ttsAmplitude, modelLoaded]);
 
   // ── Mouse passthrough & drag ──
   useEffect(() => {

@@ -95,6 +95,8 @@ class OfficialCubismModel extends CubismUserModel {
   private breath: CubismBreath | null = null;
   private userTimeSeconds = 0;
   private ready = false;
+  /** 唇形同步：说话振幅 0.0~1.0，0 表示不说话 */
+  private speakingAmplitude = 0;
   private disposed = false;
   /** Names of all available motion groups (e.g. ["Idle", "Thinking", ...]) */
   readonly motionGroups: string[] = [];
@@ -176,6 +178,20 @@ class OfficialCubismModel extends CubismUserModel {
     this.applyPointerLook();
     this.breath?.updateParameters(this._model, deltaTimeSeconds);
     this._physics?.evaluate(this._model, deltaTimeSeconds);
+
+    // 唇形同步：说话时驱动 ParamMouthOpenY
+    if (this.speakingAmplitude > 0 && this.lipSyncIds.length > 0) {
+      for (const id of this.lipSyncIds) {
+        const currentValue = this._model.getParameterValueById(id);
+        // 在模型原有值基础上叠加动画振幅
+        // 使用正弦波 + 随机因子让嘴型自然变化
+        const wave = Math.sin(this.userTimeSeconds * 15) * 0.3 + 0.5;
+        const target = wave * this.speakingAmplitude * 0.8;
+        // 取最大值（不强制覆盖已有的表情动作）
+        this._model.setParameterValueById(id, Math.max(currentValue, target), 0.8);
+      }
+    }
+
     this._model.update();
   }
 
@@ -272,6 +288,11 @@ class OfficialCubismModel extends CubismUserModel {
     for (const p of params) {
       this._model.setParameterValueById(id.getId(p), 0, 1);
     }
+  }
+
+  /** 设置说话状态（唇形同步） */
+  setSpeaking(amplitude: number): void {
+    this.speakingAmplitude = Math.max(0, Math.min(1, amplitude));
   }
 
   override release(): void {
@@ -587,6 +608,15 @@ export class Live2DRenderer implements PetRenderer {
   /** Force reset pose: drag center + all angle parameters to 0. */
   forceResetPose(): void {
     this.model?.forceResetPose();
+  }
+
+  /** 设置说话状态，驱动唇形同步动画 */
+  setSpeaking(speaking: boolean, amplitude = 0): void {
+    if (speaking) {
+      this.model?.setSpeaking(amplitude);
+    } else {
+      this.model?.setSpeaking(0);
+    }
   }
 
   /** Resize the canvas to fill the given dimensions. */

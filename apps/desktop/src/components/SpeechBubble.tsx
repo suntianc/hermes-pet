@@ -2,37 +2,56 @@ import React, { useEffect, useState } from 'react';
 
 // Add the fadeIn keyframe used by bubble animation
 const styleSheet = document.createElement('style');
-styleSheet.textContent = '@keyframes fadeIn{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
+styleSheet.textContent = '@keyframes fadeIn{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}} @keyframes fadeOut{from{opacity:1;transform:translateX(-50%) translateY(0)}to{opacity:0;transform:translateX(-50%) translateY(8px)}}';
 document.head.appendChild(styleSheet);
+
+export type BubbleMode = 'timed' | 'tts-sync';
 
 interface SpeechBubbleProps {
   text: string;
   duration?: number;
+  mode?: BubbleMode;
   onClose?: () => void;
 }
 
-export const SpeechBubble: React.FC<SpeechBubbleProps> = ({ text, duration = 3000, onClose }) => {
+export const SpeechBubble: React.FC<SpeechBubbleProps> = ({ text, duration = 3000, mode = 'timed', onClose }) => {
   const [visible, setVisible] = useState(false);
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     if (text) {
       setVisible(true);
+      setClosing(false);
 
-      const timer = setTimeout(() => {
+      // timed 模式：超时自动关闭
+      if (mode === 'timed') {
+        const timer = setTimeout(() => {
+          setClosing(true);
+          setTimeout(() => {
+            setVisible(false);
+            onClose?.();
+          }, 200); // 淡出动画时长
+        }, duration);
+
+        return () => clearTimeout(timer);
+      }
+    } else {
+      setClosing(true);
+      const fadeTimer = setTimeout(() => {
         setVisible(false);
         onClose?.();
-      }, duration);
-
-      return () => clearTimeout(timer);
-    } else {
-      setVisible(false);
+      }, 200);
+      return () => clearTimeout(fadeTimer);
     }
-  }, [text, duration, onClose]);
+  }, [text, duration, mode, onClose]);
 
   if (!visible) return null;
 
   return (
-    <div className="speech-bubble" style={bubbleStyles}>
+    <div className="speech-bubble" style={{
+      ...bubbleStyles,
+      animation: closing ? 'fadeOut 0.2s ease-in forwards' : 'fadeIn 0.2s ease-out',
+    }}>
       <p style={textStyles}>{text}</p>
       <div style={arrowStyles} />
     </div>

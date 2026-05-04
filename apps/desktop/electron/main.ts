@@ -6,6 +6,7 @@ import { registerIpcHandlers } from './ipc';
 import { startEventBridge } from './event-bridge';
 import { initModelProtocol } from './model-manager';
 import { initActionIndex, listCurrentModelActions } from './action-index';
+import { getTTSManager } from './tts';
 
 // Configure logging
 log.transports.file.level = 'info';
@@ -51,6 +52,7 @@ app.whenReady().then(async () => {
     setPetWindow(petWindow);
     createTray(petWindow);
     registerIpcHandlers();
+    getTTSManager().setWindowGetter(getPetWindow);
     startEventBridge(getPetWindow, listCurrentModelActions);
 
     log.info('ViviPet initialized successfully');

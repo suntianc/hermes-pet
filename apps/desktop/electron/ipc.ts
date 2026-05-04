@@ -4,6 +4,7 @@ import { getPetWindow } from './window';
 import { updateTrayModelNames } from './tray';
 import { importModelViaDialog, indexBundledModels, listUserModels } from './model-manager';
 import { getCurrentModelId, listModelActions, setCurrentModelId } from './action-index';
+import { getTTSManager, TTSConfig, TTSSpeakOptions } from './tts';
 
 let dragSession: {
   pointerX: number;
@@ -117,6 +118,57 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('pet:model:listActions', async (_event, modelId?: string) => {
     return listModelActions(modelId || getCurrentModelId());
+  });
+
+  // ---- TTS ----
+  const ttsManager = getTTSManager();
+
+  ipcMain.handle('pet:tts:speak', async (_event, text: string, options?: TTSSpeakOptions) => {
+    try {
+      await ttsManager.speak(text, options);
+      return { ok: true };
+    } catch (err) {
+      log.error('[IPC] TTS speak error:', err);
+      return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    }
+  });
+
+  ipcMain.on('pet:tts:stop', () => {
+    ttsManager.stop();
+  });
+
+  ipcMain.handle('pet:tts:getConfig', () => {
+    return ttsManager.getConfig();
+  });
+
+  ipcMain.handle('pet:tts:setConfig', (_event, config: Partial<TTSConfig>) => {
+    return ttsManager.setConfig(config);
+  });
+
+  ipcMain.handle('pet:tts:resetConfig', () => {
+    return ttsManager.resetConfig();
+  });
+
+  ipcMain.handle('pet:tts:getVoices', async () => {
+    // macOS: 使用 `say -v '?'` 列出可用语音
+    try {
+      const { execSync } = await import('child_process');
+      const output = execSync('say -v "?"', { encoding: 'utf8', timeout: 5000 });
+      const voices = output
+        .split('\n')
+        .filter(line => line.trim())
+        .map(line => {
+          const parts = line.split(/\s{2,}/);
+          return {
+            name: parts[0]?.trim() || '',
+            language: parts[1]?.split('#')[1]?.trim() || parts[1]?.trim() || '',
+          };
+        })
+        .filter(v => v.name);
+      return voices;
+    } catch {
+      return [];
+    }
   });
 
   log.info('IPC handlers registered');

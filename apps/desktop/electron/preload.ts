@@ -36,7 +36,20 @@ export interface PetModelAPI {
 export interface ElectronAPI {
   petWindow: PetWindowAPI;
   petModel: PetModelAPI;
+  petTTS: PetTTSAPI;
   onPetAction: (callback: (action: string, params?: unknown) => void) => () => void;
+}
+
+/** TTS API exposed to renderer */
+export interface PetTTSAPI {
+  speak: (text: string, options?: unknown) => Promise<{ ok: boolean; error?: string }>;
+  stop: () => void;
+  getConfig: () => Promise<unknown>;
+  setConfig: (config: unknown) => unknown;
+  resetConfig: () => unknown;
+  getVoices: () => Promise<Array<{ name: string; language: string }>>;
+  onTTSState: (callback: (state: unknown) => void) => () => void;
+  onTTSAudioChunk: (callback: (chunk: unknown) => void) => () => void;
 }
 
 // Expose protected methods to renderer
@@ -70,6 +83,26 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('pet:model:indexBundledModels', models),
     setCurrent: (modelId: string) => ipcRenderer.invoke('pet:model:setCurrent', modelId),
     listActions: (modelId?: string) => ipcRenderer.invoke('pet:model:listActions', modelId),
+  },
+
+  // TTS
+  petTTS: {
+    speak: (text: string, options?: unknown) => ipcRenderer.invoke('pet:tts:speak', text, options),
+    stop: () => ipcRenderer.send('pet:tts:stop'),
+    getConfig: () => ipcRenderer.invoke('pet:tts:getConfig'),
+    setConfig: (config: unknown) => ipcRenderer.invoke('pet:tts:setConfig', config),
+    resetConfig: () => ipcRenderer.invoke('pet:tts:resetConfig'),
+    getVoices: () => ipcRenderer.invoke('pet:tts:getVoices'),
+    onTTSState: (callback: (state: unknown) => void) => {
+      const handler = (_event: IpcRendererEvent, state: unknown) => callback(state);
+      ipcRenderer.on('pet:tts:state', handler);
+      return () => ipcRenderer.removeListener('pet:tts:state', handler);
+    },
+    onTTSAudioChunk: (callback: (chunk: unknown) => void) => {
+      const handler = (_event: IpcRendererEvent, chunk: unknown) => callback(chunk);
+      ipcRenderer.on('pet:tts:audioChunk', handler);
+      return () => ipcRenderer.removeListener('pet:tts:audioChunk', handler);
+    },
   },
 } as ElectronAPI);
 
