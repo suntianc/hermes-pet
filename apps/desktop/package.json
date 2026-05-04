@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "AI-driven Live2D desktop companion",
   "author": "Hermes Team",
+  "repository": "suntianc/ViviPet",
   "main": "dist/main/main.js",
   "scripts": {
     "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
