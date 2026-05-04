@@ -42,7 +42,7 @@
 ## 🎬 Demo
 
 <div align="center">
-  <video src="https://raw.githubusercontent.com/suntianc/ViviPet/main/source/video/show.mp4" style="max-width: 100%; width: 720px; height: auto; border-radius: 12px;" controls>
+  <video src="https://raw.githubusercontent.com/suntianc/ViviPet/main/source/video/show.mp4" type="video/mp4" style="max-width: 100%; width: 720px; height: auto; border-radius: 12px;" controls>
     Your browser does not support the video tag. <a href="https://raw.githubusercontent.com/suntianc/ViviPet/main/source/video/show.mp4">Download the demo video</a>.
   </video>
 </div>
