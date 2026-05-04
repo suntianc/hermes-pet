@@ -40,8 +40,7 @@
 ---
 
 ## 🎬 Demo
-
-https://github.com/suntianc/ViviPet/blob/main/source/video/show.mp4
+https://github.com/user-attachments/assets/6f3d3bb6-32da-401b-85fd-4722f299a55a
 
 ---
 
