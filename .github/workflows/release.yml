@@ -1,0 +1,117 @@
+# ViviPet 发布工作流
+# 在推送版本标签 (v*) 时触发：构建 → 打包 → 创建 GitHub Release
+---
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & Package (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - windows-latest
+        include:
+          - os: macos-latest
+            build-args: --mac
+            artifact-name: ViviPet-macOS
+            # macOS 打包环境变量
+            csc-identity: false
+          - os: windows-latest
+            build-args: --win
+            artifact-name: ViviPet-Windows
+            csc-identity: true
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/desktop/package-lock.json
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build shared packages
+        run: |
+          npm run build -w packages/pet-action-dsl
+          npm run build -w packages/shared
+
+      - name: Build desktop app (main + renderer)
+        run: npm run build -w apps/desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.csc-identity }}
+
+      - name: Package (${{ matrix.os }})
+        run: npx electron-builder ${{ matrix.build-args }} --publish never
+        working-directory: apps/desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.csc-identity }}
+          # electron-builder 上传到 GitHub Release 时使用
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts (${{ matrix.os }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: |
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.zip
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.yml
+            apps/desktop/release/*.blockmap
+          if-no-files-found: warn
+
+  release:
+    name: Create GitHub Release
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: List release files
+        run: find release-artifacts -type f -ls
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ViviPet ${{ github.ref_name }}
+          files: release-artifacts/**/*
+          generate_release_notes: true
+          draft: true
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
