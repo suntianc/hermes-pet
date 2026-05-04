@@ -32,7 +32,7 @@
 
 <p align="center">
     <a href="#-features">English</a> |
-    <a href="README.zh-CN.md">简体中文</a>
+    <a href="source/docs/README_ZH.md">简体中文</a>
 </p>
 
 > **ViviPet** gives your AI agent a visible, expressive Live2D body on the desktop — triggered by a simple action API. Every thought, speech, and emotion becomes a lively visual and audio response.
