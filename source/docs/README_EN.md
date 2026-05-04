@@ -41,11 +41,7 @@
 
 ## 🎬 Demo
 
-<div align="center">
-  <video src="../video/show.mp4" type="video/mp4" style="max-width: 100%; width: 720px; height: auto; border-radius: 12px;" controls>
-    Your browser does not support the video tag. <a href="../video/show.mp4">Download the demo video</a>.
-  </video>
-</div>
+https://github.com/user-attachments/assets/6f3d3bb6-32da-401b-85fd-4722f299a55a
 
 ---
 

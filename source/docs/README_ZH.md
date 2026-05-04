@@ -39,11 +39,7 @@
 
 ## 🎬 演示
 
-<div align="center">
-  <video src="../video/show.mp4" type="video/mp4" style="max-width: 100%; width: 720px; height: auto; border-radius: 12px;" controls>
-    您的浏览器不支持视频标签。 <a href="../video/show.mp4">下载演示视频</a>。
-  </video>
-</div>
+https://github.com/user-attachments/assets/6f3d3bb6-32da-401b-85fd-4722f299a55a
 
 ---
 
