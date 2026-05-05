@@ -9,6 +9,7 @@ export type AgentEventPhase =
   | 'tool:error'
   | 'task:done'
   | 'session:start'
+  | 'session:update'
   | 'session:end'
   | 'message'
   | 'unknown';
@@ -31,6 +32,8 @@ export interface AgentEvent {
   message?: string;
   error?: string;
   summary?: string;
+  ttlMs?: number;
+  priority?: number;
   level?: 'debug' | 'info' | 'warn' | 'error';
   tts?: boolean | AgentTTSOptions;
   metadata?: Record<string, unknown>;
@@ -40,8 +43,10 @@ export interface AgentEvent {
 export interface PetStateEvent {
   version: typeof ADAPTER_VERSION;
   action: string;
-  mode: 'continuous' | 'momentary';
+  mode: 'continuous' | 'momentary' | 'context';
   resetAfterMs?: number;
+  ttlMs?: number;
+  priority?: number;
   text?: string;
   message?: string;
   tts?: boolean | AgentTTSOptions;

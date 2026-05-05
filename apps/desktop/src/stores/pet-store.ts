@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ActionType } from '../features/actions/action-schema';
+import { BehaviorProp } from '../features/pet-events/behavior-plan';
 
 /** TTS 播放状态 */
 export type TTSState =
@@ -11,6 +12,10 @@ export type TTSState =
 interface PetState {
   currentAction: ActionType;
   actionRevision: number;
+  currentExpression: string | null;
+  expressionRevision: number;
+  currentProps: BehaviorProp[];
+  propsRevision: number;
   bubbleText: string;
   bubbleDuration: number;
 
@@ -24,6 +29,10 @@ interface PetState {
 const initialState: PetState = {
   currentAction: 'idle',
   actionRevision: 0,
+  currentExpression: null,
+  expressionRevision: 0,
+  currentProps: [],
+  propsRevision: 0,
   bubbleText: '',
   bubbleDuration: 3000,
 
@@ -57,6 +66,22 @@ class PetStore {
   setAction(action: ActionType): void {
     this.state.currentAction = action;
     this.state.actionRevision += 1;
+    this.notify();
+  }
+
+  setExpression(expression: string | null): void {
+    if (this.state.currentExpression === expression) return;
+    this.state.currentExpression = expression;
+    this.state.expressionRevision += 1;
+    this.notify();
+  }
+
+  setProps(props: BehaviorProp[]): void {
+    const next = JSON.stringify(props);
+    const current = JSON.stringify(this.state.currentProps);
+    if (current === next) return;
+    this.state.currentProps = props;
+    this.state.propsRevision += 1;
     this.notify();
   }
 
@@ -121,6 +146,8 @@ export function usePetStore() {
   return {
     ...state,
     setAction: useCallback((action: ActionType) => petStoreInstance.setAction(action), []),
+    setExpression: useCallback((expression: string | null) => petStoreInstance.setExpression(expression), []),
+    setProps: useCallback((props: BehaviorProp[]) => petStoreInstance.setProps(props), []),
     showBubble: useCallback((text: string, duration?: number) => petStoreInstance.showBubble(text, duration), []),
     hideBubble: useCallback(() => petStoreInstance.hideBubble(), []),
 

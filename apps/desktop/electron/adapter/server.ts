@@ -74,9 +74,9 @@ function capabilities(): AdapterCapabilities {
         'tool:error',
         'task:done',
         'session:start',
+        'session:update',
         'session:end',
         'message',
-        'unknown',
       ],
       speech: true,
       tts: true,
@@ -116,6 +116,10 @@ export function startAdapterServer(getWindow: () => BrowserWindow | null): void 
         const payload = await readJson(req);
         const agentEvent = normalizeAgentEvent(payload);
         const petEvent = toPetStateEvent(agentEvent);
+        if (!petEvent) {
+          sendJson(res, 400, { ok: false, error: `Unknown adapter phase: ${agentEvent.phase}` });
+          return;
+        }
         sendRendererPetEvent(getWindow, petEvent);
         sendJson(res, 200, { ok: true, version: ADAPTER_VERSION, event: petEvent });
       } catch (err) {

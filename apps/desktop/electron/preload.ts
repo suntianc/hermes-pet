@@ -37,6 +37,7 @@ export interface ElectronAPI {
   petWindow: PetWindowAPI;
   petModel: PetModelAPI;
   petTTS: PetTTSAPI;
+  petAI: PetAIAPI;
   onPetAction: (callback: (action: string, params?: unknown) => void) => () => void;
   onPetEvent: (callback: (event: unknown) => void) => () => void;
 }
@@ -52,6 +53,14 @@ export interface PetTTSAPI {
   onTTSState: (callback: (state: unknown) => void) => () => void;
   onTTSAudioChunk: (callback: (chunk: unknown) => void) => () => void;
   onTTSConfig: (callback: (config: unknown) => void) => () => void;
+}
+
+export interface PetAIAPI {
+  getConfig: () => Promise<unknown>;
+  setConfig: (config: unknown) => Promise<unknown>;
+  resetConfig: () => Promise<unknown>;
+  testConnection: (config?: unknown) => Promise<{ ok: boolean; error?: string }>;
+  plan: (request: unknown) => Promise<{ ok: boolean; plan?: unknown; error?: string }>;
 }
 
 // Expose protected methods to renderer
@@ -116,6 +125,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on('pet:tts:config', handler);
       return () => ipcRenderer.removeListener('pet:tts:config', handler);
     },
+  },
+
+  petAI: {
+    getConfig: () => ipcRenderer.invoke('pet:ai:getConfig'),
+    setConfig: (config: unknown) => ipcRenderer.invoke('pet:ai:setConfig', config),
+    resetConfig: () => ipcRenderer.invoke('pet:ai:resetConfig'),
+    testConnection: (config?: unknown) => ipcRenderer.invoke('pet:ai:testConnection', config),
+    plan: (request: unknown) => ipcRenderer.invoke('pet:ai:plan', request),
   },
 } as ElectronAPI);
 

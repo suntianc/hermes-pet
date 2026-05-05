@@ -103,16 +103,11 @@ function buildTrayMenu(): Menu {
       label: 'Mouse Passthrough',
       type: 'checkbox',
       checked: false,
-      click: (menuItem) => {
-        const on = menuItem.checked;
-        currentPetWindow?.setIgnoreMouseEvents(on, { forward: true });
-        log.info(`Mouse passthrough: ${on}`);
-      },
+      click: (menuItem) => sendAction(menuItem.checked ? 'mousePassthrough:on' : 'mousePassthrough:off'),
     },
     { type: 'separator' },
     {
       label: 'Settings',
-      enabled: false,
       click: () => sendAction('settings'),
     },
     {

@@ -36,6 +36,7 @@ const DIRECT_ACTIONS = new Set([
 const MOMENTARY_RESET: Record<string, number> = {
   happy: 3000,
   success: 2000,
+  error: 3000,
   clicked: 300,
   doubleClicked: 500,
 };
@@ -51,6 +52,8 @@ function baseEvent(event: AgentEvent, action: string, mode: PetStateEvent['mode'
     mode,
     text: speechText(event),
     message: event.error || event.message,
+    ttlMs: event.ttlMs,
+    priority: event.priority,
     tts: event.tts,
     source: {
       agent: event.agent,
@@ -62,7 +65,7 @@ function baseEvent(event: AgentEvent, action: string, mode: PetStateEvent['mode'
   };
 }
 
-export function toPetStateEvent(event: AgentEvent): PetStateEvent {
+export function toPetStateEvent(event: AgentEvent): PetStateEvent | null {
   if (event.action && DIRECT_ACTIONS.has(event.action)) {
     const resetAfterMs = MOMENTARY_RESET[event.action];
     const mode: PetStateEvent['mode'] = resetAfterMs === undefined ? 'continuous' : 'momentary';
@@ -77,6 +80,7 @@ export function toPetStateEvent(event: AgentEvent): PetStateEvent {
       return baseEvent(event, 'idle', 'continuous');
     case 'thinking':
     case 'session:start':
+    case 'session:update':
       return baseEvent(event, 'thinking', 'continuous');
     case 'speaking':
     case 'message':
@@ -86,7 +90,7 @@ export function toPetStateEvent(event: AgentEvent): PetStateEvent {
       return baseEvent(event, action, 'continuous');
     }
     case 'tool:success': {
-      return { ...baseEvent(event, 'success', 'momentary'), resetAfterMs: 2000 };
+      return baseEvent(event, 'keep', 'context');
     }
     case 'tool:error': {
       return { ...baseEvent(event, 'error', 'momentary'), resetAfterMs: 3000 };
@@ -96,6 +100,6 @@ export function toPetStateEvent(event: AgentEvent): PetStateEvent {
       return { ...baseEvent(event, 'happy', 'momentary'), resetAfterMs: 3000 };
     }
     default:
-      return baseEvent(event, 'idle', 'continuous');
+      return null;
   }
 }

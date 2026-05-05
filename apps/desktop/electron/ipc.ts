@@ -5,6 +5,8 @@ import { updateTrayModelNames } from './tray';
 import { importModelViaDialog, indexBundledModels, listUserModels } from './model-manager';
 import { getCurrentModelId, listModelActions, setCurrentModelId } from './action-index';
 import { getTTSManager, TTSConfig, TTSSpeakOptions } from './tts';
+import { getAIPlannerService } from './ai-planner';
+import { AIPlannerConfig } from './ai-planner-config';
 
 let dragSession: {
   pointerX: number;
@@ -120,6 +122,29 @@ export function registerIpcHandlers(): void {
     return listModelActions(modelId || getCurrentModelId());
   });
 
+  // ---- AI behavior planner ----
+  const aiPlanner = getAIPlannerService();
+
+  ipcMain.handle('pet:ai:getConfig', () => {
+    return aiPlanner.getConfig();
+  });
+
+  ipcMain.handle('pet:ai:setConfig', (_event, config: Partial<AIPlannerConfig>) => {
+    return aiPlanner.setConfig(config);
+  });
+
+  ipcMain.handle('pet:ai:resetConfig', () => {
+    return aiPlanner.resetConfig();
+  });
+
+  ipcMain.handle('pet:ai:testConnection', (_event, config?: Partial<AIPlannerConfig>) => {
+    return aiPlanner.testConnection(config);
+  });
+
+  ipcMain.handle('pet:ai:plan', (_event, request: unknown) => {
+    return aiPlanner.plan(request as any);
+  });
+
   // ---- TTS ----
   const ttsManager = getTTSManager();
 
@@ -132,8 +157,11 @@ export function registerIpcHandlers(): void {
       if (!config.enabled || config.source === 'none') {
         return { ok: false, error: 'TTS is disabled' };
       }
-      await ttsManager.speak(text, options);
-      return { ok: true };
+      const requestId = await ttsManager.speak(text, options);
+      if (!requestId) {
+        return { ok: false, error: 'TTS request was not queued' };
+      }
+      return { ok: true, requestId };
     } catch (err) {
       log.error('[IPC] TTS speak error:', err);
       return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };

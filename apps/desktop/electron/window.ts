@@ -5,21 +5,14 @@ import { getIsQuitting } from './app-state';
 
 let petWindow: BrowserWindow | null = null;
 
-const DEFAULT_WIDTH = 520;
-const DEFAULT_HEIGHT = 760;
-
 export function createPetWindow(): BrowserWindow {
-  const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
-
-  // Default position: bottom-right corner
-  const defaultX = screenWidth - DEFAULT_WIDTH - 20;
-  const defaultY = screenHeight - DEFAULT_HEIGHT - 20;
+  const { x, y, width, height } = screen.getPrimaryDisplay().bounds;
 
   petWindow = new BrowserWindow({
-    width: DEFAULT_WIDTH,
-    height: DEFAULT_HEIGHT,
-    x: defaultX,
-    y: defaultY,
+    width,
+    height,
+    x,
+    y,
     frame: false,
     transparent: true,
     alwaysOnTop: true,

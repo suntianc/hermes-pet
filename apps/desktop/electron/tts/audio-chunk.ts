@@ -22,9 +22,10 @@ export interface AudioChunk {
 /** TTS 播放状态 */
 export type TTSPlayState =
   | { status: 'idle' }
-  | { status: 'playing'; text: string; totalChunks: number; currentChunk: number }
+  | { status: 'playing'; requestId?: string; text: string; totalChunks: number; currentChunk: number }
+  | { status: 'completed'; requestId?: string }
   | { status: 'stopped' }
-  | { status: 'error'; message: string };
+  | { status: 'error'; requestId?: string; message: string };
 
 /** 唇形同步振幅数据 */
 export interface LipSyncData {

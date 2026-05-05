@@ -11,6 +11,18 @@ export interface ModelConfig {
     height: number;
   };
   actions?: Record<string, ModelActionConfig>;
+  capabilities?: ModelCapabilities;
+}
+
+export interface ModelCapabilities {
+  expressions?: Record<string, string | null>;
+  props?: Record<string, ModelPropCapability>;
+  propFallbacks?: Record<string, string[]>;
+}
+
+export interface ModelPropCapability {
+  enable?: Record<string, number>;
+  disable?: Record<string, number>;
 }
 
 export interface ModelActionConfig {
@@ -37,6 +49,29 @@ export const FALLBACK_MODELS: ModelConfig[] = [
     canvas: { width: 1000, height: 900 },
     actions: {
       idle: { motion: { group: 'Idle', index: 0 } },
+    },
+    capabilities: {
+      expressions: {
+        neutral: null,
+        happy: 'HeartEyes',
+        angry: 'Angry',
+        confused: 'WhiteEyes',
+        worried: 'Tear',
+        surprised: 'StarEyes',
+      },
+      props: {
+        leftHand: {
+          enable: { ParamSwitch11: 1 },
+          disable: { ParamSwitch11: 0 },
+        },
+        rightHand: {
+          enable: { ParamSwitch10: 1 },
+          disable: { ParamSwitch10: 0 },
+        },
+      },
+      propFallbacks: {
+        microphone: ['leftHand', 'rightHand'],
+      },
     },
   },
 ];
@@ -99,6 +134,7 @@ export async function loadModelConfigs(): Promise<ModelConfig[]> {
         path: string;
         window?: { width: number; height: number };
         actions?: Record<string, ModelActionConfig>;
+        capabilities?: ModelCapabilities;
       }>
         = await remote.listUserModels();
       userModels = imported.filter((m): m is typeof m & { id: string; name: string; path: string } =>
@@ -110,6 +146,7 @@ export async function loadModelConfigs(): Promise<ModelConfig[]> {
         window: m.window,
         canvas: m.window ? { width: m.window.width, height: m.window.height } : undefined,
         actions: m.actions,
+        capabilities: m.capabilities,
       }));
     }
   } catch (err) {

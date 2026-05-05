@@ -1,10 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { PlayActionOptions } from '../features/pet/PetRenderer';
 import { Live2DRenderer } from '../features/pet/Live2DRenderer';
-import { getModelWindowSize, ModelConfig } from '../features/pet/model-registry';
+import { resolveExpressionCapability, resolvePropCapabilities } from '../features/pet/capability-resolver';
+import { BehaviorProp } from '../features/pet-events/behavior-plan';
+import { getModelCanvasSize, ModelConfig } from '../features/pet/model-registry';
 
 interface PetStageProps {
   currentAction: string;
   actionRevision?: number;
+  currentExpression?: string | null;
+  expressionRevision?: number;
+  currentProps?: BehaviorProp[];
+  propsRevision?: number;
+  interactionLocked?: boolean;
   models: ModelConfig[];
   modelIndex?: number;
   isSpeaking?: boolean;
@@ -15,9 +23,20 @@ interface PetStageProps {
   onDragEnd?: () => void;
 }
 
+const MOMENTARY_ACTIONS = new Set(['happy', 'success', 'error', 'clicked', 'doubleClicked', 'wake']);
+
+function playbackForAction(action: string): PlayActionOptions['playback'] {
+  return MOMENTARY_ACTIONS.has(action) ? 'momentary' : 'hold';
+}
+
 export const PetStage: React.FC<PetStageProps> = ({
   currentAction,
   actionRevision = 0,
+  currentExpression = null,
+  expressionRevision = 0,
+  currentProps = [],
+  propsRevision = 0,
+  interactionLocked = false,
   models,
   modelIndex = 0,
   isSpeaking = false,
@@ -34,15 +53,28 @@ export const PetStage: React.FC<PetStageProps> = ({
   const isDraggingRef = useRef(false);
   const prevModelIndex = useRef<number | null>(null);
   const [modelLoaded, setModelLoaded] = useState(false);
+  const [petPosition, setPetPosition] = useState({ right: 20, bottom: 20 });
+  const petPositionRef = useRef(petPosition);
+
+  useEffect(() => {
+    petPositionRef.current = petPosition;
+  }, [petPosition]);
 
   const setMousePassthrough = (enabled: boolean) => {
     if (mousePassthroughRef.current === enabled) return;
     mousePassthroughRef.current = enabled;
+    document.documentElement.dataset.mousePassthrough = String(enabled);
     window.electronAPI?.petWindow.setIgnoreMouseEvents(enabled, { forward: true });
   };
 
   const isPointOnPet = (clientX: number, clientY: number) => {
     return rendererRef.current?.hitTestClientPoint(clientX, clientY) ?? false;
+  };
+
+  const isPointInPetBounds = (clientX: number, clientY: number) => {
+    const bounds = canvasContainerRef.current?.getBoundingClientRect();
+    if (!bounds) return false;
+    return clientX >= bounds.left && clientX <= bounds.right && clientY >= bounds.top && clientY <= bounds.bottom;
   };
 
   useEffect(() => {
@@ -91,16 +123,39 @@ export const PetStage: React.FC<PetStageProps> = ({
     if (!model) return;
 
     window.electronAPI?.petModel?.setCurrent?.(model.id);
-
-    const { width, height } = getModelWindowSize(model);
-    window.electronAPI?.petWindow.setSize(width, height);
   }, [modelIndex, models]);
 
   useEffect(() => {
     if (!modelLoaded || !rendererRef.current) return;
     console.log(`[PetStage] Action changed to: ${currentAction} #${actionRevision}`);
-    rendererRef.current.playAction(currentAction);
+    rendererRef.current.playAction(currentAction, { playback: playbackForAction(currentAction) });
   }, [actionRevision, currentAction, modelLoaded]);
+
+  useEffect(() => {
+    if (!modelLoaded || !rendererRef.current) return;
+
+    const model = models[modelIndex];
+    const resolvedExpression = resolveExpressionCapability(model, currentExpression);
+    if (resolvedExpression === null) {
+      rendererRef.current.resetExpression();
+      return;
+    }
+    if (resolvedExpression) {
+      rendererRef.current.setExpression(resolvedExpression);
+      return;
+    }
+    if (currentExpression) {
+      rendererRef.current.resetExpression();
+    }
+  }, [currentExpression, expressionRevision, modelIndex, modelLoaded, models]);
+
+  useEffect(() => {
+    if (!modelLoaded || !rendererRef.current) return;
+
+    const model = models[modelIndex];
+    const resolvedProps = resolvePropCapabilities(model, currentProps);
+    rendererRef.current.setParameters(resolvedProps.params);
+  }, [currentProps, propsRevision, modelIndex, modelLoaded, models]);
 
   useEffect(() => {
     if (!rendererRef.current || !modelLoaded) return;
@@ -121,9 +176,11 @@ export const PetStage: React.FC<PetStageProps> = ({
     if (!modelLoaded || !rendererRef.current) return;
     const doResize = () => {
       const scale = parseFloat(document.documentElement.dataset.petScale || '1');
-      if (!isNaN(scale)) {
-        const w = Math.round(520 * scale);
-        const h = Math.round(760 * scale);
+      const model = models[modelIndex];
+      if (!isNaN(scale) && model) {
+        const { width, height } = getModelCanvasSize(model);
+        const w = Math.round(width * scale);
+        const h = Math.round(height * scale);
         rendererRef.current?.resize(w, h);
       }
     };
@@ -133,7 +190,7 @@ export const PetStage: React.FC<PetStageProps> = ({
     const observer = new MutationObserver(doResize);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-pet-scale'] });
     return () => observer.disconnect();
-  }, [modelLoaded]);
+  }, [modelIndex, modelLoaded, models]);
 
   // ── Reset pointer when data-reset-pointer is set ──
   useEffect(() => {
@@ -220,14 +277,77 @@ export const PetStage: React.FC<PetStageProps> = ({
     }
   }, [isSpeaking, ttsAmplitude, modelLoaded]);
 
+  // ── Keep pet interactive even after the transparent window is passthrough ──
+  useEffect(() => {
+    if (!modelLoaded) return;
+
+    let stopped = false;
+    let checking = false;
+
+    const updatePassthroughFromCursor = async () => {
+      if (stopped || checking || isDraggingRef.current) return;
+
+      checking = true;
+      try {
+        const [cursor, windowPosition] = await Promise.all([
+          window.electronAPI?.petWindow.getCursorScreenPoint(),
+          window.electronAPI?.petWindow.getPosition(),
+        ]);
+        if (!cursor || !windowPosition || stopped) return;
+
+        const clientX = cursor.x - windowPosition.x;
+        const clientY = cursor.y - windowPosition.y;
+        const onPet = isPointInPetBounds(clientX, clientY) || isPointOnPet(clientX, clientY);
+
+        if (onPet) {
+          setMousePassthrough(false);
+        } else if (!interactionLocked) {
+          setMousePassthrough(true);
+        }
+      } finally {
+        checking = false;
+      }
+    };
+
+    const intervalId = window.setInterval(updatePassthroughFromCursor, 50);
+    updatePassthroughFromCursor();
+
+    return () => {
+      stopped = true;
+      window.clearInterval(intervalId);
+    };
+  }, [interactionLocked, modelLoaded]);
+
   // ── Mouse passthrough & drag ──
   useEffect(() => {
     if (!modelLoaded) return;
-    const container = containerRef.current;
+    const container = canvasContainerRef.current;
     if (!container) return;
 
     let rafId = 0;
     let didMove = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let dragOrigin = { right: 20, bottom: 20 };
+
+    const clampPetPosition = (position: { right: number; bottom: number }) => {
+      const bounds = canvasContainerRef.current?.getBoundingClientRect();
+      const petWidth = bounds?.width ?? 80;
+      const petHeight = bounds?.height ?? 80;
+      const visibleBounds = rendererRef.current?.getOpaqueBoundsClient();
+      const leftInset = bounds && visibleBounds ? Math.max(0, visibleBounds.left - bounds.left) : 0;
+      const rightInset = bounds && visibleBounds ? Math.max(0, bounds.right - visibleBounds.right) : 0;
+      const topInset = bounds && visibleBounds ? Math.max(0, visibleBounds.top - bounds.top) : 0;
+      const bottomInset = bounds && visibleBounds ? Math.max(0, bounds.bottom - visibleBounds.bottom) : 0;
+      const minRight = -rightInset;
+      const maxRight = Math.max(minRight, window.innerWidth - petWidth + leftInset);
+      const minBottom = -bottomInset;
+      const maxBottom = Math.max(minBottom, window.innerHeight - petHeight + topInset);
+      return {
+        right: Math.max(minRight, Math.min(maxRight, position.right)),
+        bottom: Math.max(minBottom, Math.min(maxBottom, position.bottom)),
+      };
+    };
 
     const onMouseDown = (e: MouseEvent) => {
       if (e.button !== 0) return;
@@ -236,13 +356,16 @@ export const PetStage: React.FC<PetStageProps> = ({
       e.preventDefault();
       didMove = false;
       isDraggingRef.current = true;
-      window.electronAPI?.petWindow.beginDrag();
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      dragOrigin = petPositionRef.current;
+      setMousePassthrough(false);
       onDragStart?.();
     };
 
     const onMouseMove = (e: MouseEvent) => {
       if (!isDraggingRef.current) {
-        setMousePassthrough(!isPointOnPet(e.clientX, e.clientY));
+        setMousePassthrough(!isPointInPetBounds(e.clientX, e.clientY) && !isPointOnPet(e.clientX, e.clientY));
       }
 
       if (!isDraggingRef.current) return;
@@ -250,7 +373,10 @@ export const PetStage: React.FC<PetStageProps> = ({
       if (!rafId) {
         rafId = requestAnimationFrame(() => {
           rafId = 0;
-          window.electronAPI?.petWindow.dragToCursor();
+          setPetPosition(clampPetPosition({
+            right: dragOrigin.right - (e.clientX - dragStartX),
+            bottom: dragOrigin.bottom - (e.clientY - dragStartY),
+          }));
         });
       }
     };
@@ -259,30 +385,34 @@ export const PetStage: React.FC<PetStageProps> = ({
       if (!isDraggingRef.current) return;
       isDraggingRef.current = false;
       if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
-      window.electronAPI?.petWindow.endDrag();
       onDragEnd?.();
       if (!didMove) {
         setMousePassthrough(true);
       }
     };
 
+    const onWindowResize = () => {
+      setPetPosition((position) => clampPetPosition(position));
+    };
+
     container.addEventListener('mousedown', onMouseDown, true);
-    container.addEventListener('mousemove', onMouseMove, true);
+    window.addEventListener('mousemove', onMouseMove, true);
     window.addEventListener('mouseup', onMouseUp, true);
+    window.addEventListener('resize', onWindowResize);
 
     return () => {
       container.removeEventListener('mousedown', onMouseDown, true);
-      container.removeEventListener('mousemove', onMouseMove, true);
+      window.removeEventListener('mousemove', onMouseMove, true);
       window.removeEventListener('mouseup', onMouseUp, true);
+      window.removeEventListener('resize', onWindowResize);
       if (rafId) cancelAnimationFrame(rafId);
-      window.electronAPI?.petWindow.endDrag();
     };
-  }, [modelLoaded, onDragStart, onDragEnd]);
+  }, [interactionLocked, modelLoaded, onDragStart, onDragEnd]);
 
   // ── Click ──
   const lastClickTime = useRef(0);
   useEffect(() => {
-    const container = containerRef.current;
+    const container = canvasContainerRef.current;
     if (!container) return;
 
     const onClick = (e: MouseEvent) => {
@@ -312,17 +442,17 @@ export const PetStage: React.FC<PetStageProps> = ({
         width: '100%',
         height: '100%',
         position: 'relative',
+        pointerEvents: 'none',
       }}
     >
       <div
         ref={canvasContainerRef}
         className="live2d-container"
         style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          position: 'absolute',
+          right: petPosition.right,
+          bottom: petPosition.bottom,
+          pointerEvents: 'auto',
         }}
       />
 

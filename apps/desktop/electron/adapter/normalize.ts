@@ -16,6 +16,10 @@ interface AdapterPayload {
   message?: string;
   error?: string;
   summary?: string;
+  ttl?: number;
+  ttlMs?: number;
+  ttl_ms?: number;
+  priority?: number;
   level?: string;
   tts?: boolean | AgentTTSOptions;
   metadata?: Record<string, unknown>;
@@ -38,6 +42,8 @@ const PHASE_ALIASES: Record<string, AgentEventPhase> = {
   'task:done': 'task:done',
   session_start: 'session:start',
   'session:start': 'session:start',
+  session_update: 'session:update',
+  'session:update': 'session:update',
   session_end: 'session:end',
   'session:end': 'session:end',
   pre_tool_call: 'tool:start',
@@ -78,6 +84,10 @@ function normalizeTTS(value: unknown): AgentEvent['tts'] {
   return undefined;
 }
 
+function asFiniteNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
 export function normalizeAgentEvent(payload: unknown): AgentEvent {
   const obj = asObject(payload) as AdapterPayload;
   const data = asObject(obj.data);
@@ -99,6 +109,8 @@ export function normalizeAgentEvent(payload: unknown): AgentEvent {
     message,
     error,
     summary,
+    ttlMs: asFiniteNumber(obj.ttlMs ?? obj.ttl_ms ?? obj.ttl ?? data.ttlMs ?? data.ttl_ms ?? data.ttl),
+    priority: asFiniteNumber(obj.priority ?? data.priority),
     level: normalizeLevel(obj.level || data.level),
     tts: normalizeTTS(obj.tts !== undefined ? obj.tts : data.tts),
     metadata: obj.metadata || data,

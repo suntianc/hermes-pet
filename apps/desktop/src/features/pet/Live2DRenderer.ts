@@ -12,6 +12,7 @@ import { CubismMotionQueueEntryHandle, InvalidMotionQueueEntryHandleValue } from
 import { CubismShaderManager_WebGL } from '@framework/rendering/cubismshader_webgl';
 import { CubismIdHandle } from '@framework/id/cubismid';
 import { PetRenderer } from './PetRenderer';
+import { PlayActionOptions } from './PetRenderer';
 import { getModelCanvasSize, ModelActionConfig, ModelConfig } from './model-registry';
 
 const SHADER_PATH = './Framework/Shaders/WebGL/';
@@ -235,6 +236,15 @@ class OfficialCubismModel extends CubismUserModel {
       return;
     }
     this._expressionManager.startMotion(expression, false);
+  }
+
+  setParameters(params: Record<string, number>): void {
+    if (!this._model || !this._initialized) return;
+    const idManager = CubismFramework.getIdManager();
+    for (const [paramId, value] of Object.entries(params)) {
+      this._model.setParameterValueById(idManager.getId(paramId), value, 1);
+    }
+    this._model.saveParameters();
   }
 
   resetExpression(): void {
@@ -515,6 +525,7 @@ export class Live2DRenderer implements PetRenderer {
   private canvasHeight = DEFAULT_CANVAS_HEIGHT;
   private currentModelConfig: ModelConfig | null = null;
   private expressionResetTimer: number | null = null;
+  private lastActionName: string | null = null;
   private loadVersion = 0;
   private lastFrameTime = 0;
   private disposed = false;
@@ -565,27 +576,39 @@ export class Live2DRenderer implements PetRenderer {
    * 2. Auto-detect from loaded model: match motion group name to action name
    * 3. Idle motion + optional expression fallback
    */
-  async playAction(actionName: string): Promise<void> {
+  async playAction(actionName: string, options: PlayActionOptions = {}): Promise<void> {
+    const playback = options.playback ?? 'restart';
+    if (playback === 'hold' && this.lastActionName === actionName) {
+      return;
+    }
+
     // Priority 1: Manual override from model config
     const configuredAction = this.currentModelConfig?.actions?.[actionName];
     if (configuredAction) {
-      await this.playConfiguredAction(configuredAction);
+      await this.playConfiguredAction(configuredAction, actionName, playback);
       return;
     }
 
     // Priority 2 & 3: Auto-detect or Idle fallback
     const resolvedAction = this.resolveAction(actionName);
     if (resolvedAction) {
-      await this.playConfiguredAction(resolvedAction);
+      await this.playConfiguredAction(resolvedAction, actionName, playback);
     }
   }
 
-  async playMotion(group: string, index = 0): Promise<void> {
-    this.model?.startMotion(group, index, PRIORITY_FORCE);
+  async playMotion(group: string, index = 0, options: PlayActionOptions = {}): Promise<void> {
+    const priority = options.playback === 'momentary' || options.playback === 'restart'
+      ? PRIORITY_FORCE
+      : PRIORITY_NORMAL;
+    this.model?.startMotion(group, index, priority);
   }
 
   async setExpression(name: string): Promise<void> {
     this.model?.setExpressionByName(name);
+  }
+
+  setParameters(params: Record<string, number>): void {
+    this.model?.setParameters(params);
   }
 
   resetExpression(): void {
@@ -635,6 +658,7 @@ export class Live2DRenderer implements PetRenderer {
   idle(): void {
     this.forceResetPose();
     this.model?.startMotion('Idle', 0, PRIORITY_IDLE);
+    this.lastActionName = 'idle';
   }
 
   async switchModel(modelConfig: ModelConfig, _fallbackIndex = 0): Promise<void> {
@@ -659,6 +683,52 @@ export class Live2DRenderer implements PetRenderer {
     } catch {
       return true;
     }
+  }
+
+  getOpaqueBoundsClient(alphaThreshold = 18): DOMRect | null {
+    if (!this.canvas || !this.gl) return null;
+
+    const width = this.canvas.width;
+    const height = this.canvas.height;
+    const rect = this.canvas.getBoundingClientRect();
+    if (width <= 0 || height <= 0 || rect.width <= 0 || rect.height <= 0) return null;
+
+    const pixels = new Uint8Array(width * height * 4);
+    try {
+      this.gl.readPixels(0, 0, width, height, this.gl.RGBA, this.gl.UNSIGNED_BYTE, pixels);
+    } catch {
+      return rect;
+    }
+
+    let minX = width;
+    let minY = height;
+    let maxX = -1;
+    let maxY = -1;
+    const stride = Math.max(1, Math.floor(Math.min(width, height) / 300));
+
+    for (let y = 0; y < height; y += stride) {
+      for (let x = 0; x < width; x += stride) {
+        const alpha = pixels[(y * width + x) * 4 + 3];
+        if (alpha < alphaThreshold) continue;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+
+    if (maxX < minX || maxY < minY) return null;
+
+    const left = rect.left + (minX / width) * rect.width;
+    const right = rect.left + ((maxX + stride) / width) * rect.width;
+    const top = rect.top + ((height - maxY - stride) / height) * rect.height;
+    const bottom = rect.top + ((height - minY) / height) * rect.height;
+    return new DOMRect(
+      Math.max(rect.left, left),
+      Math.max(rect.top, top),
+      Math.min(rect.right, right) - Math.max(rect.left, left),
+      Math.min(rect.bottom, bottom) - Math.max(rect.top, top),
+    );
   }
 
   destroy(): void {
@@ -745,9 +815,10 @@ export class Live2DRenderer implements PetRenderer {
       this.model.release();
       this.model = null;
     }
+    this.lastActionName = null;
   }
 
-  private async playConfiguredAction(action: ModelActionConfig): Promise<void> {
+  private async playConfiguredAction(action: ModelActionConfig, actionName: string, playback: PlayActionOptions['playback']): Promise<void> {
     if (this.expressionResetTimer) {
       window.clearTimeout(this.expressionResetTimer);
       this.expressionResetTimer = null;
@@ -756,14 +827,14 @@ export class Live2DRenderer implements PetRenderer {
     if (action.expression) {
       // Reset pose before each expressive action so the animation starts clean.
       this.forceResetPose();
-    } else {
+    } else if (actionName === 'idle' || playback === 'restart') {
       // Non-expression actions such as Idle must clear sticky motion/expression
       // parameters from previous actions before establishing a new baseline.
       this.model?.resetToDefaultParameters();
     }
 
     if (action.motion) {
-      await this.playMotion(action.motion.group, action.motion.index ?? 0);
+      await this.playMotion(action.motion.group, action.motion.index ?? 0, { playback });
     }
 
     if (action.expression) {
@@ -778,6 +849,8 @@ export class Live2DRenderer implements PetRenderer {
         this.expressionResetTimer = null;
       }, action.resetExpressionAfterMs);
     }
+
+    this.lastActionName = actionName;
   }
 
   /**

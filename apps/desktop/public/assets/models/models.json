@@ -8,6 +8,29 @@
       "canvas": { "width": 750, "height": 700 },
       "actions": {
         "idle": { "motion": { "group": "Idle", "index": 0 } }
+      },
+      "capabilities": {
+        "expressions": {
+          "neutral": null,
+          "happy": "HeartEyes",
+          "angry": "Angry",
+          "confused": "WhiteEyes",
+          "worried": "Tear",
+          "surprised": "StarEyes"
+        },
+        "props": {
+          "leftHand": {
+            "enable": { "ParamSwitch11": 1 },
+            "disable": { "ParamSwitch11": 0 }
+          },
+          "rightHand": {
+            "enable": { "ParamSwitch10": 1 },
+            "disable": { "ParamSwitch10": 0 }
+          }
+        },
+        "propFallbacks": {
+          "microphone": ["leftHand", "rightHand"]
+        }
       }
     }
   ]

@@ -90,24 +90,24 @@ export class TTSManager {
    * 请求播报文本
    * 入队等待，队列按 FIFO 串行处理
    */
-  async speak(text: string, options?: TTSSpeakOptions): Promise<void> {
+  async speak(text: string, options?: TTSSpeakOptions): Promise<string | null> {
     log.info(`[TTS] speak() called: text="${text?.slice(0, 50)}" enabled=${this.config.enabled} source=${this.config.source}`);
 
     if (!text?.trim() || !this.config.enabled) {
       log.warn(`[TTS] speak() skipped: text="${text}" enabled=${this.config.enabled}`);
-      return;
+      return null;
     }
 
     // 文本校验
     const errors = validateText(text, this.config.maxChars);
     if (errors.length > 0) {
       log.warn('[TTS] Text validation failed:', errors);
-      return;
+      return null;
     }
 
     // 分段
     const textChunks = splitText(text, this.config.maxChars);
-    if (textChunks.length === 0) return;
+    if (textChunks.length === 0) return null;
 
     const item: QueueItem = {
       id: generateId(),
@@ -123,6 +123,8 @@ export class TTSManager {
     if (!this.isProcessing) {
       this.processQueue();
     }
+
+    return item.id;
   }
 
   /** 停止所有播报并清空队列 */
@@ -153,6 +155,7 @@ export class TTSManager {
         log.error(`[TTS] Failed to process item ${item.id}:`, err);
         this.sendToRenderer('pet:tts:state', {
           status: 'error',
+          requestId: item.id,
           message: err instanceof Error ? err.message : 'Unknown error',
         } satisfies TTSPlayState);
       } finally {
@@ -178,6 +181,7 @@ export class TTSManager {
       // 发送状态：开始一段
       this.sendToRenderer('pet:tts:state', {
         status: 'playing',
+        requestId: item.id,
         text: chunk.text,
         totalChunks: item.chunks.length,
         currentChunk: i,
@@ -200,6 +204,8 @@ export class TTSManager {
         throw err;
       }
     }
+
+    this.sendToRenderer('pet:tts:state', { status: 'completed', requestId: item.id } satisfies TTSPlayState);
   }
 
   // ---- 各 Provider 处理 ----

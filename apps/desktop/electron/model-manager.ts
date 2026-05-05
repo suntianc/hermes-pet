@@ -28,6 +28,16 @@ function resolveUserModelPath(relativePath: string): string {
   return path.join(app.getPath('userData'), USER_MODELS_DIR, relativePath);
 }
 
+function resolveSafeUserModelPath(relativePath: string): string | null {
+  const modelsRoot = path.resolve(app.getPath('userData'), USER_MODELS_DIR);
+  const resolvedPath = path.resolve(modelsRoot, relativePath);
+  const relativeToRoot = path.relative(modelsRoot, resolvedPath);
+  if (relativeToRoot.startsWith('..') || path.isAbsolute(relativeToRoot)) {
+    return null;
+  }
+  return resolvedPath;
+}
+
 /**
  * Initialize the vivipet-assets protocol for serving user-imported model files.
  * This allows the renderer to fetch user models via `vivipet-assets://models/...`
@@ -35,11 +45,11 @@ function resolveUserModelPath(relativePath: string): string {
  */
 export function initModelProtocol(): void {
   protocol.handle('vivipet-assets', (request) => {
-    const url = new URL(request.url);
-    // url.pathname is like /models/<modelId>/texture_00.png
-    const filePath = resolveUserModelPath(url.pathname.replace(/^\//, ''));
     try {
-      if (!fs.existsSync(filePath)) {
+      const url = new URL(request.url);
+      // url.pathname is like /models/<modelId>/texture_00.png
+      const filePath = resolveSafeUserModelPath(decodeURIComponent(url.pathname.replace(/^\//, '')));
+      if (!filePath || !fs.existsSync(filePath)) {
         return new Response('Not found', { status: 404 });
       }
       return net.fetch(pathToFileURL(filePath));
