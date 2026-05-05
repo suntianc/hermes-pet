@@ -38,6 +38,7 @@ export interface ElectronAPI {
   petModel: PetModelAPI;
   petTTS: PetTTSAPI;
   onPetAction: (callback: (action: string, params?: unknown) => void) => () => void;
+  onPetEvent: (callback: (event: unknown) => void) => () => void;
 }
 
 /** TTS API exposed to renderer */
@@ -50,6 +51,7 @@ export interface PetTTSAPI {
   getVoices: () => Promise<Array<{ name: string; language: string }>>;
   onTTSState: (callback: (state: unknown) => void) => () => void;
   onTTSAudioChunk: (callback: (chunk: unknown) => void) => () => void;
+  onTTSConfig: (callback: (config: unknown) => void) => () => void;
 }
 
 // Expose protected methods to renderer
@@ -73,6 +75,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = (_event: IpcRendererEvent, action: string, params?: unknown) => callback(action, params);
     ipcRenderer.on('pet:action', handler);
     return () => ipcRenderer.removeListener('pet:action', handler);
+  },
+
+  onPetEvent: (callback: (event: unknown) => void) => {
+    const handler = (_event: IpcRendererEvent, petEvent: unknown) => callback(petEvent);
+    ipcRenderer.on('pet:event', handler);
+    return () => ipcRenderer.removeListener('pet:event', handler);
   },
 
   // Model management
@@ -102,6 +110,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
       const handler = (_event: IpcRendererEvent, chunk: unknown) => callback(chunk);
       ipcRenderer.on('pet:tts:audioChunk', handler);
       return () => ipcRenderer.removeListener('pet:tts:audioChunk', handler);
+    },
+    onTTSConfig: (callback: (config: unknown) => void) => {
+      const handler = (_event: IpcRendererEvent, config: unknown) => callback(config);
+      ipcRenderer.on('pet:tts:config', handler);
+      return () => ipcRenderer.removeListener('pet:tts:config', handler);
     },
   },
 } as ElectronAPI);

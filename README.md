@@ -51,46 +51,60 @@ https://github.com/user-attachments/assets/6f3d3bb6-32da-401b-85fd-4722f299a55a
 | Feature | Description |
 |---|---|
 | **Rich Expression System** | Powered by Live2D Cubism 5 — thinking, speaking, happy, confused, angry, and more |
-| **External Agent API** | HTTP event bridge (`:18765`) — any agent can control the pet with `curl` |
+| **External Agent API** | Built-in Agent Adapter (`:18765`) — any agent hook can control the pet with semantic events |
 | **Multi-Source TTS** | System TTS (macOS `say`) · Local service · Cloud API |
 | **Mouse Awareness** | Eyes follow your cursor — it always knows where you're looking |
 | **Custom Model Support** | Import your own Live2D models via the tray menu |
 | **Lightweight** | Frameless, transparent, always-on-top — sits quietly in the corner |
-| **Flexible Integration** | HTTP event bridge · Electron IPC — bring your own agent |
+| **Flexible Integration** | Built-in Agent Adapter · Electron IPC — bring your own agent |
 
 </div>
 
 ---
 
-### HTTP Event Bridge
+### Agent Adapter
 
 ```
-POST http://localhost:18765/event   → Dispatch an action with speech
-GET  http://localhost:18765/actions → List available actions
-GET  http://localhost:18765/health  → Health check
+POST http://localhost:18765/adapter              → Dispatch an agent event
+GET  http://localhost:18765/adapter/capabilities → List semantic capabilities
+GET  http://localhost:18765/health               → Health check
 ```
 
 ```bash
-# No-code trigger from any agent
-curl -X POST http://localhost:18765/event \
+# Stable semantic trigger from any agent hook
+curl -X POST http://localhost:18765/adapter \
   -H "Content-Type: application/json" \
   -d '{
-    "type":"happy",
+    "agent":"hermes",
+    "phase":"task:done",
     "text":"Task complete, go check it out~",
     "tts":{
+      "enabled": true,
       "model": "instruct",
       "instruct": "A cute, playful girl voice with high pitch"
     }
   }'
 ```
 
+`tts` is a per-event switch. Use `tts: true` or `tts: { "enabled": true, ... }` to request voice. Use `tts: false` or omit it to show text in the speech bubble. ViviPet still checks the current TTS config first; if TTS is disabled or the provider fails, it falls back to the bubble.
+
+The Adapter exposes semantic phases instead of Live2D motion names, so model-specific actions remain an internal ViviPet detail.
+
 ### Integration Examples
 
 <details>
 <summary><b>Hermes Agent Integration</b></summary>
 
-```markdown
-Coming soon...
+Use the Python hook bridge in `source/example/hermes`:
+
+```bash
+python3 source/example/hermes/vivipet_adapter_hook.py
+```
+
+Copy or merge the sample hooks from:
+
+```text
+source/example/hermes/config.yaml
 ```
 
 </details>
@@ -98,8 +112,12 @@ Coming soon...
 <details>
 <summary><b>Claude Code / Cursor Integration</b></summary>
 
-```markdown
-Coming soon...
+Use any command/hook integration that can POST JSON to the Adapter:
+
+```bash
+curl -X POST http://localhost:18765/adapter \
+  -H "Content-Type: application/json" \
+  -d '{"agent":"cursor","phase":"thinking","text":"Working on it...","tts":false}'
 ```
 
 </details>

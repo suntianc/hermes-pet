@@ -3,9 +3,9 @@ import log from 'electron-log';
 import { createPetWindow, getPetWindow, setPetWindow } from './window';
 import { createTray } from './tray';
 import { registerIpcHandlers } from './ipc';
-import { startEventBridge } from './event-bridge';
+import { startAdapterServer } from './adapter/server';
 import { initModelProtocol } from './model-manager';
-import { initActionIndex, listCurrentModelActions } from './action-index';
+import { initActionIndex } from './action-index';
 import { getTTSManager } from './tts';
 
 // Configure logging
@@ -53,7 +53,7 @@ app.whenReady().then(async () => {
     createTray(petWindow);
     registerIpcHandlers();
     getTTSManager().setWindowGetter(getPetWindow);
-    startEventBridge(getPetWindow, listCurrentModelActions);
+    startAdapterServer(getPetWindow);
 
     log.info('ViviPet initialized successfully');
   } catch (error) {

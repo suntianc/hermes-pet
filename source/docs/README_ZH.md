@@ -50,46 +50,60 @@ https://github.com/user-attachments/assets/6f3d3bb6-32da-401b-85fd-4722f299a55a
 | 功能 | 描述 |
 |---|---|
 | **丰富表情系统** | 基于 Live2D Cubism 5 —— 思考、说话、开心、困惑、生气等多种表情 |
-| **外部 Agent API** | HTTP 事件桥（`:18765`）—— 任何 Agent 只需一条 `curl` 即可控制宠物 |
+| **外部 Agent API** | 内置 Agent Adapter（`:18765`）—— 任何 Agent hook 都可以用语义事件控制桌宠 |
 | **多源 TTS** | 系统语音（macOS say）· 本地服务 · 云端 API |
 | **鼠标感知** | 眼睛跟随光标移动——它总知道你在看哪里 |
 | **自定义模型支持** | 通过托盘菜单导入你自己的 Live2D 模型 |
 | **轻量设计** | 无框、透明、置顶——安静地待在角落 |
-| **灵活集成** | SSE · HTTP 事件桥 · Electron IPC —— 接入你自己的 Agent |
+| **灵活集成** | 内置 Agent Adapter · Electron IPC —— 接入你自己的 Agent |
 
 </div>
 
 ---
 
-### HTTP 事件桥
+### Agent Adapter
 
 ```
-POST http://localhost:18765/event   → 派发一个动作和语音
-GET  http://localhost:18765/actions → 列出可用动作
-GET  http://localhost:18765/health  → 健康检查
+POST http://localhost:18765/adapter              → 派发 Agent 事件
+GET  http://localhost:18765/adapter/capabilities → 查看语义能力
+GET  http://localhost:18765/health               → 健康检查
 ```
 
 ```bash
-# 无需代码，任何 Agent 均可触发
-curl -X POST http://localhost:18765/event \
+# 使用稳定语义事件触发 ViviPet
+curl -X POST http://localhost:18765/adapter \
   -H "Content-Type: application/json" \
   -d '{
-    "type":"happy",
+    "agent":"hermes",
+    "phase":"task:done",
     "text":"任务完成啦，快去看看成果吧～",
     "tts":{
+      "enabled": true,
       "model": "instruct",
       "instruct": "体现撒娇稚嫩的萝莉女声"
     }
   }'
 ```
 
+`tts` 是单次事件开关。使用 `tts: true` 或 `tts: { "enabled": true, ... }` 请求语音提醒；使用 `tts: false` 或不传则显示气泡。ViviPet 仍会先检查当前 TTS 配置，若 TTS 未开启或服务不可用，会自动回退到气泡。
+
+Adapter 对外暴露语义阶段，而不是 Live2D 动作名；具体模型动作仍是 ViviPet 内部实现细节。
+
 ### 集成示例
 
 <details>
 <summary><b>Hermes Agent 集成</b></summary>
 
-```markdown
-建设中...
+使用 `source/example/hermes` 中的 Python hook bridge：
+
+```bash
+python3 source/example/hermes/vivipet_adapter_hook.py
+```
+
+将示例 hooks 配置复制或合并到 `~/.hermes/config.yaml`：
+
+```text
+source/example/hermes/config.yaml
 ```
 
 </details>
@@ -97,8 +111,12 @@ curl -X POST http://localhost:18765/event \
 <details>
 <summary><b>Claude Code / Cursor 集成</b></summary>
 
-```markdown
-建设中...
+使用任意能向 Adapter 发送 JSON 的命令或 hook：
+
+```bash
+curl -X POST http://localhost:18765/adapter \
+  -H "Content-Type: application/json" \
+  -d '{"agent":"cursor","phase":"thinking","text":"正在处理...","tts":false}'
 ```
 
 </details>

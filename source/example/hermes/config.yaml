@@ -1,0 +1,34 @@
+# ViviPet Hermes hook example
+#
+# Copy the `hooks:` block into ~/.hermes/config.yaml, or merge it with your
+# existing hooks. The command path is absolute for this repository checkout.
+# Must be open hooks_auto_accept: true in ~/.hermes/config.yaml to auto accept the hooks.
+
+hooks:
+  on_session_start:
+    - command: "python3 source/example/hermes/vivipet_adapter_hook.py"
+      timeout: 5
+
+  pre_tool_call:
+    - command: "python3 source/example/hermes/vivipet_adapter_hook.py"
+      timeout: 5
+
+  post_tool_call:
+    - command: "python3 source/example/hermes/vivipet_adapter_hook.py"
+      timeout: 5
+
+  pre_llm_call:
+    - command: "python3 source/example/hermes/vivipet_adapter_hook.py"
+      timeout: 5
+
+  post_llm_call:
+    - command: "python3 source/example/hermes/vivipet_adapter_hook.py"
+      timeout: 5
+
+  on_session_end:
+    - command: "python3 source/example/hermes/vivipet_adapter_hook.py"
+      timeout: 5
+
+  on_session_finalize:
+    - command: "python3 source/example/hermes/vivipet_adapter_hook.py"
+      timeout: 5

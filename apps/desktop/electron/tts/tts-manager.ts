@@ -72,6 +72,7 @@ export class TTSManager {
   setConfig(partial: Partial<TTSConfig>): TTSConfig {
     this.config = { ...this.config, ...partial };
     saveConfig(this.config);
+    this.sendToRenderer('pet:tts:config', this.getConfig());
     return this.getConfig();
   }
 
@@ -79,6 +80,7 @@ export class TTSManager {
   resetConfig(): TTSConfig {
     this.config = getDefaultConfig();
     saveConfig(this.config);
+    this.sendToRenderer('pet:tts:config', this.getConfig());
     return this.getConfig();
   }
 

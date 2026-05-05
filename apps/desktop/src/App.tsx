@@ -2,30 +2,22 @@ import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { PetStage } from './components/PetStage';
 import { SpeechBubble } from './components/SpeechBubble';
 import { usePetStore } from './stores/pet-store';
-import { ActionType } from './features/actions/action-schema';
 import { loadModelConfigs, ModelConfig } from './features/pet/model-registry';
 import { StreamingAudioPlayer } from './audio/streaming-player';
-
-/** Simplified external event type. */
-interface ExternalEvent {
-  type: string;
-  text?: string;
-  tool?: string;
-  error?: string;
-  summary?: string;
-  message?: string;
-  tts?: {
-    voice?: string;
-    model?: 'preset' | 'clone' | 'instruct';
-    instruct?: string;
-  };
-}
+import { applyPetStateEvent } from './features/pet-events/apply-pet-event';
+import { isPetStateEvent, PetTTSOptions } from './features/pet-events/pet-event-schema';
 
 /** TTS 状态（来自主进程） */
 interface TTSStateEvent {
   status: 'idle' | 'playing' | 'stopped' | 'error';
   text?: string;
   message?: string;
+}
+
+interface TTSConfigSnapshot {
+  enabled?: boolean;
+  source?: string;
+  fallbackToBubble?: boolean;
 }
 
 /** TTS 音频块（来自主进程） */
@@ -43,6 +35,7 @@ const App: React.FC = () => {
   const [modelRevision, setModelRevision] = useState(0);
   const actionResetTimerRef = useRef<number | null>(null);
   const audioPlayerRef = useRef<StreamingAudioPlayer | null>(null);
+  const pendingTTSFallbackRef = useRef<{ text: string; duration: number } | null>(null);
 
   const {
     currentAction,
@@ -91,8 +84,16 @@ const App: React.FC = () => {
     return api.petTTS.onTTSState((stateRaw: unknown) => {
       const s = stateRaw as TTSStateEvent;
       setTTSState(s.status === 'playing' ? { status: 'playing', text: s.text || '' } : { status: s.status as any });
+      if (s.status === 'playing') {
+        pendingTTSFallbackRef.current = null;
+      }
+      if (s.status === 'error' && pendingTTSFallbackRef.current) {
+        const fallback = pendingTTSFallbackRef.current;
+        pendingTTSFallbackRef.current = null;
+        showBubble(fallback.text, fallback.duration);
+      }
     });
-  }, [setTTSState]);
+  }, [setTTSState, showBubble]);
 
   // ---- TTS 音频块监听 ----
   useEffect(() => {
@@ -110,67 +111,70 @@ const App: React.FC = () => {
     });
   }, []);
 
-  // ---- TTS 开关状态（启动时异步加载）----
-  const [ttsEnabled, setTTSEnabled] = useState(false);
-  useEffect(() => {
-    (window as any).electronAPI?.petTTS?.getConfig().then((cfg: any) => {
-      setTTSEnabled(cfg?.enabled === true && cfg?.source !== 'none');
-    }).catch(() => {});
+  // ---- TTS 配置快照（启动时异步加载）----
+  const [ttsConfig, setTTSConfig] = useState<TTSConfigSnapshot>({});
+  const updateTTSConfigSnapshot = useCallback((cfg: any) => {
+    setTTSConfig({
+      enabled: cfg?.enabled === true,
+      source: cfg?.source,
+      fallbackToBubble: cfg?.fallbackToBubble !== false,
+    });
   }, []);
 
-  // ---- 语音/气泡分发器（用 ref 隔离，不参与任何 deps 链）----
-  const ttsEnabledRef = useRef(false);
-  ttsEnabledRef.current = ttsEnabled;
+  useEffect(() => {
+    const api = (window as any).electronAPI?.petTTS;
+    api?.getConfig().then(updateTTSConfigSnapshot).catch(() => {});
+    const cleanup = api?.onTTSConfig?.(updateTTSConfigSnapshot);
+    return cleanup;
+  }, [updateTTSConfigSnapshot]);
 
-  const handleSpeech = useCallback((text: string, ttsOpts?: ExternalEvent['tts']) => {
+  // ---- 语音/气泡分发器（用 ref 隔离，不参与任何 deps 链）----
+  const ttsConfigRef = useRef<TTSConfigSnapshot>({});
+  ttsConfigRef.current = ttsConfig;
+
+  const handleSpeech = useCallback((text: string, ttsOpts?: boolean | PetTTSOptions) => {
     if (!text?.trim()) return;
-    if (ttsEnabledRef.current) {
-      // TTS 模式 → 纯语音
-      const opts = ttsOpts ? { text, voice: ttsOpts.voice, model: ttsOpts.model || 'preset', ...(ttsOpts.model === 'instruct' ? { instruct: ttsOpts.instruct } : {}) } : { text, model: 'preset' as const };
-      (window as any).electronAPI?.petTTS?.speak(text, opts).catch(() => {});
-    } else {
-      // 气泡模式 → 纯文字
-      showBubble(text, Math.min(3000 + text.length * 50, 15000));
+    const duration = Math.min(3000 + text.length * 50, 15000);
+    const cfg = ttsConfigRef.current;
+    const ttsRequested = ttsOpts === true || (typeof ttsOpts === 'object' && ttsOpts.enabled === true);
+    const ttsAvailable = cfg.enabled === true && cfg.source !== 'none';
+
+    if (!ttsRequested || !ttsAvailable) {
+      showBubble(text, duration);
+      return;
     }
+
+    const optionObject = typeof ttsOpts === 'object' ? ttsOpts : undefined;
+    const opts = optionObject
+      ? { text, voice: optionObject.voice, model: optionObject.model || 'preset', ...(optionObject.model === 'instruct' ? { instruct: optionObject.instruct } : {}) }
+      : { text, model: 'preset' as const };
+
+    pendingTTSFallbackRef.current = cfg.fallbackToBubble === false ? null : { text, duration };
+    (window as any).electronAPI?.petTTS?.speak(text, opts).then((result: { ok?: boolean; error?: string } | undefined) => {
+      if (result?.ok === false && pendingTTSFallbackRef.current) {
+        const fallback = pendingTTSFallbackRef.current;
+        pendingTTSFallbackRef.current = null;
+        showBubble(fallback.text, fallback.duration);
+      }
+    }).catch(() => {
+      if (pendingTTSFallbackRef.current) {
+        const fallback = pendingTTSFallbackRef.current;
+        pendingTTSFallbackRef.current = null;
+        showBubble(fallback.text, fallback.duration);
+      }
+    });
   }, [showBubble]);
 
-  /** Convert an external event into a pet action. */
-  const handleExternalEvent = useCallback((event: ExternalEvent, source: 'bridge' | 'other' = 'bridge') => {
-    clearActionResetTimer();
-    const setContinuousAction = (action: ActionType) => {
-      if (currentAction !== action) setAction(action);
-    };
-
-    switch (event.type) {
-      case 'idle': setContinuousAction('idle'); break;
-      case 'thinking': setContinuousAction('thinking'); break;
-      case 'speaking':
-        setContinuousAction('speaking');
-        // text 参数保留用于后续 TTS
-        break;
-      case 'tool_start': {
-        const tool = event.tool || 'coding';
-        const actionMap: Record<string, ActionType> = { searching: 'searching', reading: 'reading', terminal: 'terminal' };
-        setContinuousAction(actionMap[tool] || 'coding');
-        break;
-      }
-      case 'tool_success': setAction('success'); scheduleIdle(2000); break;
-      case 'tool_error': setAction('error'); scheduleIdle(3000); break;
-      case 'task_done': setAction('happy'); scheduleIdle(3000); break;
-      case 'happy': setAction('happy'); scheduleIdle(3000); break;
-      case 'success': setAction('success'); scheduleIdle(2000); break;
-      case 'error': setAction('error'); break;
-      case 'confused': setContinuousAction('confused'); break;
-      case 'angry': setContinuousAction('angry'); break;
-      case 'searching': setContinuousAction('searching'); break;
-      case 'reading': setContinuousAction('reading'); break;
-      case 'coding': setContinuousAction('coding'); break;
-      case 'terminal': setContinuousAction('terminal'); break;
-      case 'sleep': setContinuousAction('sleep'); break;
-      case 'wake': setContinuousAction('wake'); break;
-      default: break;
-    }
-  }, [clearActionResetTimer, currentAction, hideBubble, scheduleIdle, setAction, showBubble]);
+  const handlePetEvent = useCallback((eventRaw: unknown) => {
+    if (!isPetStateEvent(eventRaw)) return;
+    applyPetStateEvent(eventRaw, {
+      currentAction,
+      clearActionResetTimer,
+      setAction,
+      scheduleIdle,
+      handleSpeech,
+    });
+  }, [clearActionResetTimer, currentAction, handleSpeech, scheduleIdle, setAction]);
 
   useEffect(() => {
     let cancelled = false;
@@ -241,13 +245,22 @@ const App: React.FC = () => {
   }, [showBubble]);
 
   // Listen for IPC events from main process:
-  // - Tray menu actions → handleMenuAction
-  // - Event bridge (type-based) → handleExternalEvent
+  // - Tray menu actions → handleMenuAction / direct local actions
+  // - Adapter events → handlePetEvent
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const api = (window as any).electronAPI;
+    const cleanups: Array<() => void> = [];
+
+    if (api?.onPetEvent) {
+      cleanups.push(api.onPetEvent((event: unknown) => {
+        console.log('[IPC] Received pet event:', event);
+        handlePetEvent(event);
+      }));
+    }
+
     if (api?.onPetAction) {
-      const cleanup = api.onPetAction((action: string, params?: unknown) => {
+      cleanups.push(api.onPetAction((action: string, params?: unknown) => {
         console.log(`[IPC] Received action: ${action}`, params);
 
         // Handle size change (base: 520x760)
@@ -284,16 +297,14 @@ const App: React.FC = () => {
           handleMenuAction(action);
           return;
         }
-        // 所有事件统一处理（handleExternalEvent 的 switch 有 default 兜底）
-        const event = { type: action, ...(params as Partial<ExternalEvent> | undefined) };
-        handleExternalEvent(event);
-        // 任何事件只要有 text，都走语音/气泡（独立于动画状态）
-        const speechText = event.text || event.message || '';
-        if (speechText) handleSpeech(speechText, event.tts);
-      });
-      return cleanup;
+
+        clearActionResetTimer();
+        setAction(action);
+      }));
     }
-  }, [clearActionResetTimer, handleExternalEvent, handleMenuAction, scheduleIdle, setAction]);
+
+    return () => cleanups.forEach((cleanup) => cleanup());
+  }, [clearActionResetTimer, handleMenuAction, handlePetEvent, setAction]);
 
   return (
     <div style={{

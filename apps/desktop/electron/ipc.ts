@@ -125,6 +125,13 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('pet:tts:speak', async (_event, text: string, options?: TTSSpeakOptions) => {
     try {
+      const config = ttsManager.getConfig();
+      if (!text?.trim()) {
+        return { ok: false, error: 'Empty TTS text' };
+      }
+      if (!config.enabled || config.source === 'none') {
+        return { ok: false, error: 'TTS is disabled' };
+      }
       await ttsManager.speak(text, options);
       return { ok: true };
     } catch (err) {
