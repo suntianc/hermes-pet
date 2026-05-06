@@ -6,6 +6,7 @@
 			"Jian.8192/texture_00.png"
 		],
 		"Physics": "Jian.physics3.json",
+		"DisplayInfo": "Jian.cdi3.json",
 		"Expressions": [
 			{ "Name": "Blush", "File": "expression/脸红.exp3.json" },
 			{ "Name": "LeftHand", "File": "expression/左手.exp3.json" },
@@ -25,50 +26,20 @@
 			"Thinking": [
 				{ "File": "motion/thinking.motion3.json" }
 			],
-			"Speaking": [
-				{ "File": "motion/speaking.motion3.json" }
+			"Coding": [
+				{ "File": "motion/coding.motion3.json" }
 			],
-			"Happy": [
-				{ "File": "motion/happy.motion3.json" }
+			"Terminal": [
+				{ "File": "motion/terminal.motion3.json" }
+			],
+			"Testing": [
+				{ "File": "motion/testing.motion3.json" }
 			],
 			"Success": [
 				{ "File": "motion/success.motion3.json" }
 			],
 			"Error": [
 				{ "File": "motion/error.motion3.json" }
-			],
-			"Confused": [
-				{ "File": "motion/confused.motion3.json" }
-			],
-			"Angry": [
-				{ "File": "motion/angry.motion3.json" }
-			],
-			"Surprised": [
-				{ "File": "motion/surprised.motion3.json" }
-			],
-			"Searching": [
-				{ "File": "motion/searching.motion3.json" }
-			],
-			"Reading": [
-				{ "File": "motion/reading.motion3.json" }
-			],
-			"Terminal": [
-				{ "File": "motion/terminal.motion3.json" }
-			],
-			"Sleep": [
-				{ "File": "motion/sleep.motion3.json" }
-			],
-			"Wake": [
-				{ "File": "motion/wake.motion3.json" }
-			],
-			"Dragging": [
-				{ "File": "motion/dragging.motion3.json" }
-			],
-			"Clicked": [
-				{ "File": "motion/clicked.motion3.json" }
-			],
-			"DoubleClicked": [
-				{ "File": "motion/doubleClicked.motion3.json" }
 			]
 		}
 	},

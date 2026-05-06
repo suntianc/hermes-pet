@@ -393,6 +393,11 @@ const App: React.FC = () => {
     };
   }, [modelRevision]);
 
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).electronAPI?.petWindow?.setCurrentModelIndex?.(modelIndex);
+  }, [modelIndex]);
+
   const handleClick = useCallback(() => {
     clearActionResetTimer();
     setAction('clicked');
@@ -420,7 +425,7 @@ const App: React.FC = () => {
     const modelMatch = action.match(/^model:(\d+)$/);
     if (modelMatch) {
       const newIndex = parseInt(modelMatch[1], 10);
-      setModelIndex(newIndex);
+      setModelIndex(Math.max(0, Math.min(newIndex, models.length - 1)));
       return;
     }
     switch (action) {
@@ -443,7 +448,7 @@ const App: React.FC = () => {
         setModelRevision((v) => v + 1);
         break;
     }
-  }, [loadAIConfig, showBubble]);
+  }, [loadAIConfig, models.length, showBubble]);
 
   // Listen for IPC events from main process:
   // - Tray menu actions → handleMenuAction / direct local actions

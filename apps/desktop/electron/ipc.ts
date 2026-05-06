@@ -1,7 +1,7 @@
 import { ipcMain, screen } from 'electron';
 import log from 'electron-log';
 import { getPetWindow } from './window';
-import { updateTrayModelNames } from './tray';
+import { updateTrayCurrentModel, updateTrayModelNames } from './tray';
 import { importModelViaDialog, indexBundledModels, listUserModels } from './model-manager';
 import { getCurrentModelId, listModelActions, setCurrentModelId } from './action-index';
 import { getTTSManager, TTSConfig, TTSSpeakOptions } from './tts';
@@ -99,6 +99,10 @@ export function registerIpcHandlers(): void {
   // ---- Tray model list sync ----
   ipcMain.on('pet:tray:updateModelNames', (_event, names: string[]) => {
     updateTrayModelNames(names);
+  });
+
+  ipcMain.on('pet:tray:updateCurrentModel', (_event, index: number) => {
+    updateTrayCurrentModel(index);
   });
 
   // ---- Model management ----

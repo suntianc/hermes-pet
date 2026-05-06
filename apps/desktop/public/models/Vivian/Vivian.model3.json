@@ -1,0 +1,99 @@
+{
+  "Version": 3,
+  "FileReferences": {
+    "Moc": "Vivian.moc3",
+    "Textures": [
+      "Vivian.4096/texture_00.png",
+      "Vivian.4096/texture_01.png",
+      "Vivian.4096/texture_02.png",
+      "Vivian.4096/texture_03.png",
+      "Vivian.4096/texture_04.png",
+      "Vivian.4096/texture_05.png",
+      "Vivian.4096/texture_06.png",
+      "Vivian.4096/texture_07.png",
+      "Vivian.4096/texture_08.png",
+      "Vivian.4096/texture_09.png",
+      "Vivian.4096/texture_10.png"
+    ],
+    "Physics": "Vivian.physics3.json",
+    "DisplayInfo": "Vivian.cdi3.json",
+    "Expressions": [
+      {
+        "Name": "WhiteEyes",
+        "File": "expression/white-eyes.exp3.json"
+      },
+      {
+        "Name": "Shy",
+        "File": "expression/shy.exp3.json"
+      },
+      {
+        "Name": "DarkFace",
+        "File": "expression/dark-face.exp3.json"
+      },
+      {
+        "Name": "Panic",
+        "File": "expression/panic.exp3.json"
+      },
+      {
+        "Name": "UmbrellaOff",
+        "File": "expression/umbrella-off.exp3.json"
+      },
+      {
+        "Name": "Cry",
+        "File": "expression/cry.exp3.json"
+      }
+    ],
+    "Motions": {
+      "Idle": [
+        {
+          "File": "motion/idle.motion3.json"
+        }
+      ],
+      "Thinking": [
+        {
+          "File": "motion/thinking.motion3.json"
+        }
+      ],
+      "Coding": [
+        {
+          "File": "motion/coding.motion3.json"
+        }
+      ],
+      "Terminal": [
+        {
+          "File": "motion/terminal.motion3.json"
+        }
+      ],
+      "Testing": [
+        {
+          "File": "motion/testing.motion3.json"
+        }
+      ],
+      "Success": [
+        {
+          "File": "motion/success.motion3.json"
+        }
+      ],
+      "Error": [
+        {
+          "File": "motion/error.motion3.json"
+        }
+      ]
+    }
+  },
+  "Groups": [
+    {
+      "Target": "Parameter",
+      "Name": "EyeBlink",
+      "Ids": [
+        "ParamEyeLOpen",
+        "ParamEyeROpen"
+      ]
+    },
+    {
+      "Target": "Parameter",
+      "Name": "LipSync",
+      "Ids": []
+    }
+  ]
+}

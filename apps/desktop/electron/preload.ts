@@ -10,6 +10,7 @@ export interface PetWindowAPI {
   getCursorScreenPoint: () => Promise<{ x: number; y: number }>;
   setSize: (width: number, height: number) => void;
   setModelNames: (names: string[]) => void;
+  setCurrentModelIndex: (index: number) => void;
   setSizeAnchored: (width: number, height: number) => void;
 }
 
@@ -76,6 +77,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getCursorScreenPoint: () => ipcRenderer.invoke('pet:window:getCursorScreenPoint'),
     setSize: (width: number, height: number) => ipcRenderer.send('pet:window:setSize', width, height),
     setModelNames: (names: string[]) => ipcRenderer.send('pet:tray:updateModelNames', names),
+    setCurrentModelIndex: (index: number) => ipcRenderer.send('pet:tray:updateCurrentModel', index),
     setSizeAnchored: (width: number, height: number) => ipcRenderer.send('pet:window:setSizeAnchored', width, height),
   },
 

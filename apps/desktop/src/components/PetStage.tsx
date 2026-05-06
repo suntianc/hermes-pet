@@ -25,6 +25,13 @@ interface PetStageProps {
 
 const MOMENTARY_ACTIONS = new Set(['happy', 'success', 'error', 'clicked', 'doubleClicked', 'wake']);
 
+type PetDragInsets = {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+};
+
 function playbackForAction(action: string): PlayActionOptions['playback'] {
   return MOMENTARY_ACTIONS.has(action) ? 'momentary' : 'hold';
 }
@@ -52,7 +59,9 @@ export const PetStage: React.FC<PetStageProps> = ({
   const mousePassthroughRef = useRef<boolean | null>(null);
   const isDraggingRef = useRef(false);
   const prevModelIndex = useRef<number | null>(null);
+  const dragInsetsRef = useRef<PetDragInsets | null>(null);
   const [modelLoaded, setModelLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [petPosition, setPetPosition] = useState({ right: 20, bottom: 20 });
   const petPositionRef = useRef(petPosition);
 
@@ -81,6 +90,7 @@ export const PetStage: React.FC<PetStageProps> = ({
     if (models.length === 0) return;
 
     setModelLoaded(false);
+    setLoadError(null);
     prevModelIndex.current = null;
     let disposed = false;
 
@@ -103,11 +113,17 @@ export const PetStage: React.FC<PetStageProps> = ({
         canvas.style.display = 'block';
         canvasContainerRef.current.appendChild(canvas);
         console.log('[PetStage] Canvas appended to container');
+        prevModelIndex.current = modelIndex;
         setModelLoaded(true);
       }
     };
 
-    initRenderer();
+    initRenderer().catch((err) => {
+      console.error('[PetStage] Failed to initialize renderer:', err);
+      if (!disposed) {
+        setLoadError(err instanceof Error ? err.message : String(err));
+      }
+    });
 
     return () => {
       disposed = true;
@@ -163,13 +179,43 @@ export const PetStage: React.FC<PetStageProps> = ({
       prevModelIndex.current = modelIndex;
       return;
     }
+    if (prevModelIndex.current === modelIndex) {
+      return;
+    }
     prevModelIndex.current = modelIndex;
     console.log(`[PetStage] Switching to model index: ${modelIndex}`);
     const nextModel = models[modelIndex];
-    if (nextModel) {
-      rendererRef.current.switchModel(nextModel, modelIndex);
-    }
-  }, [modelIndex, modelLoaded, models]);
+    if (!nextModel) return;
+
+    let cancelled = false;
+    const switchModel = async () => {
+      const renderer = rendererRef.current;
+      if (!renderer) return;
+      setModelLoaded(false);
+      await renderer.switchModel(nextModel, modelIndex);
+      if (cancelled || rendererRef.current !== renderer) return;
+
+      const scale = parseFloat(document.documentElement.dataset.petScale || '1');
+      const { width, height } = getModelCanvasSize(nextModel);
+      renderer.resize(
+        Math.round(width * (Number.isFinite(scale) ? scale : 1)),
+        Math.round(height * (Number.isFinite(scale) ? scale : 1)),
+      );
+      await renderer.playAction(currentAction, { playback: playbackForAction(currentAction) });
+      if (!cancelled && rendererRef.current === renderer) {
+        setModelLoaded(true);
+      }
+    };
+
+    void switchModel().catch((err) => {
+      console.error('[PetStage] Failed to switch model:', err);
+      if (!cancelled) setModelLoaded(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [modelIndex, models]);
 
   // ── Resize canvas when petScale data attribute changes ──
   useEffect(() => {
@@ -297,7 +343,7 @@ export const PetStage: React.FC<PetStageProps> = ({
 
         const clientX = cursor.x - windowPosition.x;
         const clientY = cursor.y - windowPosition.y;
-        const onPet = isPointInPetBounds(clientX, clientY) || isPointOnPet(clientX, clientY);
+        const onPet = isPointOnPet(clientX, clientY);
 
         if (onPet) {
           setMousePassthrough(false);
@@ -330,19 +376,25 @@ export const PetStage: React.FC<PetStageProps> = ({
     let dragStartY = 0;
     let dragOrigin = { right: 20, bottom: 20 };
 
-    const clampPetPosition = (position: { right: number; bottom: number }) => {
+    const getVisibleInsets = (): PetDragInsets => {
+      const bounds = canvasContainerRef.current?.getBoundingClientRect();
+      const visibleBounds = rendererRef.current?.getOpaqueBoundsClient();
+      return {
+        left: bounds && visibleBounds ? Math.max(0, visibleBounds.left - bounds.left) : 0,
+        right: bounds && visibleBounds ? Math.max(0, bounds.right - visibleBounds.right) : 0,
+        top: bounds && visibleBounds ? Math.max(0, visibleBounds.top - bounds.top) : 0,
+        bottom: bounds && visibleBounds ? Math.max(0, bounds.bottom - visibleBounds.bottom) : 0,
+      };
+    };
+
+    const clampPetPosition = (position: { right: number; bottom: number }, insets = dragInsetsRef.current ?? getVisibleInsets()) => {
       const bounds = canvasContainerRef.current?.getBoundingClientRect();
       const petWidth = bounds?.width ?? 80;
       const petHeight = bounds?.height ?? 80;
-      const visibleBounds = rendererRef.current?.getOpaqueBoundsClient();
-      const leftInset = bounds && visibleBounds ? Math.max(0, visibleBounds.left - bounds.left) : 0;
-      const rightInset = bounds && visibleBounds ? Math.max(0, bounds.right - visibleBounds.right) : 0;
-      const topInset = bounds && visibleBounds ? Math.max(0, visibleBounds.top - bounds.top) : 0;
-      const bottomInset = bounds && visibleBounds ? Math.max(0, bounds.bottom - visibleBounds.bottom) : 0;
-      const minRight = -rightInset;
-      const maxRight = Math.max(minRight, window.innerWidth - petWidth + leftInset);
-      const minBottom = -bottomInset;
-      const maxBottom = Math.max(minBottom, window.innerHeight - petHeight + topInset);
+      const minRight = -insets.right;
+      const maxRight = Math.max(minRight, window.innerWidth - petWidth + insets.left);
+      const minBottom = -insets.bottom;
+      const maxBottom = Math.max(minBottom, window.innerHeight - petHeight + insets.top);
       return {
         right: Math.max(minRight, Math.min(maxRight, position.right)),
         bottom: Math.max(minBottom, Math.min(maxBottom, position.bottom)),
@@ -359,13 +411,14 @@ export const PetStage: React.FC<PetStageProps> = ({
       dragStartX = e.clientX;
       dragStartY = e.clientY;
       dragOrigin = petPositionRef.current;
+      dragInsetsRef.current = getVisibleInsets();
       setMousePassthrough(false);
       onDragStart?.();
     };
 
     const onMouseMove = (e: MouseEvent) => {
       if (!isDraggingRef.current) {
-        setMousePassthrough(!isPointInPetBounds(e.clientX, e.clientY) && !isPointOnPet(e.clientX, e.clientY));
+        setMousePassthrough(!isPointOnPet(e.clientX, e.clientY));
       }
 
       if (!isDraggingRef.current) return;
@@ -384,6 +437,7 @@ export const PetStage: React.FC<PetStageProps> = ({
     const onMouseUp = () => {
       if (!isDraggingRef.current) return;
       isDraggingRef.current = false;
+      dragInsetsRef.current = null;
       if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
       onDragEnd?.();
       if (!didMove) {
@@ -456,7 +510,7 @@ export const PetStage: React.FC<PetStageProps> = ({
         }}
       />
 
-      {!modelLoaded && (
+      {(!modelLoaded || loadError) && (
         <div
           style={{
             position: 'absolute',
@@ -468,7 +522,7 @@ export const PetStage: React.FC<PetStageProps> = ({
             fontFamily: 'system-ui, sans-serif',
           }}
         >
-          Loading Live2D...
+          {loadError ? `Live2D load failed: ${loadError}` : 'Loading Live2D...'}
         </div>
       )}
     </div>

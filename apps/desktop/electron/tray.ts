@@ -7,6 +7,7 @@ import { getTTSManager } from './tts';
 let tray: Tray | null = null;
 let currentPetWindow: BrowserWindow | null = null;
 let modelNames: string[] = [];
+let currentModelIndex = 0;
 
 /** Send an action event to the renderer process. */
 function sendAction(action: string): void {
@@ -135,9 +136,11 @@ function buildTrayMenu(): Menu {
   ];
 
   // Switch Model submenu (dynamic)
-  if (modelNames.length > 1) {
+  if (modelNames.length > 0) {
     const modelItems: MenuItemConstructorOptions[] = modelNames.map((name, index) => ({
       label: name,
+      type: 'radio',
+      checked: index === currentModelIndex,
       click: () => sendAction(`model:${index}`),
     }));
     template.push({ label: 'Switch Model', submenu: modelItems });
@@ -184,9 +187,21 @@ export function createTray(petWindow: BrowserWindow): Tray {
  */
 export function updateTrayModelNames(names: string[]): void {
   modelNames = names;
+  currentModelIndex = Math.min(currentModelIndex, Math.max(0, names.length - 1));
   if (tray) {
     tray.setContextMenu(buildTrayMenu());
     log.info(`Tray menu updated with ${names.length} model(s)`);
+  }
+}
+
+/** Update the checked model in the tray's Switch Model submenu. */
+export function updateTrayCurrentModel(index: number): void {
+  currentModelIndex = Number.isFinite(index)
+    ? Math.max(0, Math.min(Math.trunc(index), Math.max(0, modelNames.length - 1)))
+    : 0;
+  if (tray) {
+    tray.setContextMenu(buildTrayMenu());
+    log.info(`Tray current model updated: ${currentModelIndex}`);
   }
 }
 

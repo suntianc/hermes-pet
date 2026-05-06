@@ -1,8 +1,9 @@
 # ViviPet Hermes hook example
 #
-# Copy the `hooks:` block into ~/.hermes/config.yaml, or merge it with your
-# existing hooks. The command path is absolute for this repository checkout.
-# Must be open hooks_auto_accept: true in ~/.hermes/config.yaml to auto accept the hooks.
+# Run this from the repository root, or replace the command with the absolute
+# path to vivipet_adapter_hook.py when copying into ~/.hermes/config.yaml.
+# Enable hooks_auto_accept: true in ~/.hermes/config.yaml if you want Hermes to
+# auto accept these local hooks.
 
 hooks:
   on_session_start:

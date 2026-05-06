@@ -381,22 +381,26 @@ class OfficialCubismModel extends CubismUserModel {
 
   private async loadMotionFile(group: string, index: number): Promise<void> {
     const fileName = this.setting!.getMotionFileName(group, index);
-    const buffer = await fetchArrayBuffer(this.homeDir + fileName);
-    const name = `${group}_${index}`;
-    const motion = this.loadMotion(
-      buffer,
-      buffer.byteLength,
-      name,
-      undefined,
-      undefined,
-      this.setting!,
-      group,
-      index,
-      this._motionConsistency,
-    );
+    try {
+      const buffer = await fetchArrayBuffer(this.homeDir + fileName);
+      const name = `${group}_${index}`;
+      const motion = this.loadMotion(
+        buffer,
+        buffer.byteLength,
+        name,
+        undefined,
+        undefined,
+        this.setting!,
+        group,
+        index,
+        this._motionConsistency,
+      );
 
-    if (motion) this.motions.set(name, motion);
-    motion?.setEffectIds(this.eyeBlinkIds, this.lipSyncIds);
+      if (motion) this.motions.set(name, motion);
+      motion?.setEffectIds(this.eyeBlinkIds, this.lipSyncIds);
+    } catch (err) {
+      console.warn(`[Live2DRenderer] Failed to load motion ${group}[${index}] ${fileName}:`, err);
+    }
   }
 
   private async loadExtraMotion(actionName: string, group: string, index: number, filePath: string): Promise<void> {
