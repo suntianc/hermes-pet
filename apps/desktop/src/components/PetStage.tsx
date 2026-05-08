@@ -1,17 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { PlayActionOptions } from '../features/pet/PetRenderer';
-import { Live2DRenderer } from '../features/pet/Live2DRenderer';
-import { resolveExpressionCapability, resolvePropCapabilities } from '../features/pet/capability-resolver';
-import { BehaviorProp } from '../features/pet-events/behavior-plan';
-import { getModelCanvasSize, ModelConfig } from '../features/pet/model-registry';
+import { RiveRenderer } from '../features/pet/RiveRenderer';
+import { ModelConfig } from '../features/pet/model-registry';
 
 interface PetStageProps {
   currentAction: string;
   actionRevision?: number;
-  currentExpression?: string | null;
-  expressionRevision?: number;
-  currentProps?: BehaviorProp[];
-  propsRevision?: number;
   interactionLocked?: boolean;
   models: ModelConfig[];
   modelIndex?: number;
@@ -39,10 +33,6 @@ function playbackForAction(action: string): PlayActionOptions['playback'] {
 export const PetStage: React.FC<PetStageProps> = ({
   currentAction,
   actionRevision = 0,
-  currentExpression = null,
-  expressionRevision = 0,
-  currentProps = [],
-  propsRevision = 0,
   interactionLocked = false,
   models,
   modelIndex = 0,
@@ -55,7 +45,7 @@ export const PetStage: React.FC<PetStageProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
-  const rendererRef = useRef<Live2DRenderer | null>(null);
+  const rendererRef = useRef<RiveRenderer | null>(null);
   const mousePassthroughRef = useRef<boolean | null>(null);
   const isDraggingRef = useRef(false);
   const prevModelIndex = useRef<number | null>(null);
@@ -77,7 +67,10 @@ export const PetStage: React.FC<PetStageProps> = ({
   };
 
   const isPointOnPet = (clientX: number, clientY: number) => {
-    return rendererRef.current?.hitTestClientPoint(clientX, clientY) ?? false;
+    const view = rendererRef.current?.view;
+    if (!view) return false;
+    const rect = view.getBoundingClientRect();
+    return clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
   };
 
   const isPointInPetBounds = (clientX: number, clientY: number) => {
@@ -91,42 +84,38 @@ export const PetStage: React.FC<PetStageProps> = ({
 
     setModelLoaded(false);
     setLoadError(null);
-    prevModelIndex.current = null;
-    let disposed = false;
+    let cancelled = false;
 
     const initRenderer = async () => {
-      console.log('[PetStage] Initializing Live2DRenderer...');
-      const renderer = new Live2DRenderer();
+      console.log('[PetStage] Initializing RiveRenderer...');
+      const renderer = new RiveRenderer();
       rendererRef.current = renderer;
 
       const model = models[Math.min(modelIndex, models.length - 1)] ?? models[0];
       console.log(`[PetStage] Loading model from: ${model.path}`);
 
       await renderer.loadModel(model);
-      if (disposed || rendererRef.current !== renderer) return;
+      if (cancelled || rendererRef.current !== renderer) return;
 
-      const canvas = renderer.view;
-      if (canvas && canvasContainerRef.current) {
-        while (canvasContainerRef.current.firstChild) {
-          canvasContainerRef.current.removeChild(canvasContainerRef.current.firstChild);
-        }
-        canvas.style.display = 'block';
-        canvasContainerRef.current.appendChild(canvas);
-        console.log('[PetStage] Canvas appended to container');
-        prevModelIndex.current = modelIndex;
+      const container = canvasContainerRef.current;
+      if (container && renderer.view) {
+        container.innerHTML = '';
+        container.appendChild(renderer.backgroundCanvas ?? document.createElement('div'));
+        container.appendChild(renderer.view);
+        console.log('[PetStage] Rive canvases appended to container');
         setModelLoaded(true);
       }
     };
 
     initRenderer().catch((err) => {
       console.error('[PetStage] Failed to initialize renderer:', err);
-      if (!disposed) {
+      if (!cancelled) {
         setLoadError(err instanceof Error ? err.message : String(err));
       }
     });
 
     return () => {
-      disposed = true;
+      cancelled = true;
       if (rendererRef.current) {
         rendererRef.current.destroy();
         rendererRef.current = null;
@@ -142,36 +131,10 @@ export const PetStage: React.FC<PetStageProps> = ({
   }, [modelIndex, models]);
 
   useEffect(() => {
-    if (!modelLoaded || !rendererRef.current) return;
+    if (!rendererRef.current) return;
     console.log(`[PetStage] Action changed to: ${currentAction} #${actionRevision}`);
     rendererRef.current.playAction(currentAction, { playback: playbackForAction(currentAction) });
-  }, [actionRevision, currentAction, modelLoaded]);
-
-  useEffect(() => {
-    if (!modelLoaded || !rendererRef.current) return;
-
-    const model = models[modelIndex];
-    const resolvedExpression = resolveExpressionCapability(model, currentExpression);
-    if (resolvedExpression === null) {
-      rendererRef.current.resetExpression();
-      return;
-    }
-    if (resolvedExpression) {
-      rendererRef.current.setExpression(resolvedExpression);
-      return;
-    }
-    if (currentExpression) {
-      rendererRef.current.resetExpression();
-    }
-  }, [currentExpression, expressionRevision, modelIndex, modelLoaded, models]);
-
-  useEffect(() => {
-    if (!modelLoaded || !rendererRef.current) return;
-
-    const model = models[modelIndex];
-    const resolvedProps = resolvePropCapabilities(model, currentProps);
-    rendererRef.current.setParameters(resolvedProps.params);
-  }, [currentProps, propsRevision, modelIndex, modelLoaded, models]);
+  }, [actionRevision, currentAction]);
 
   useEffect(() => {
     if (!rendererRef.current || !modelLoaded) return;
@@ -192,22 +155,23 @@ export const PetStage: React.FC<PetStageProps> = ({
       const renderer = rendererRef.current;
       if (!renderer) return;
       setModelLoaded(false);
-      await renderer.switchModel(nextModel, modelIndex);
-      if (cancelled || rendererRef.current !== renderer) return;
+      renderer.destroy();
 
-      const scale = parseFloat(document.documentElement.dataset.petScale || '1');
-      const { width, height } = getModelCanvasSize(nextModel);
-      renderer.resize(
-        Math.round(width * (Number.isFinite(scale) ? scale : 1)),
-        Math.round(height * (Number.isFinite(scale) ? scale : 1)),
-      );
-      await renderer.playAction(currentAction, { playback: playbackForAction(currentAction) });
-      if (!cancelled && rendererRef.current === renderer) {
-        setModelLoaded(true);
+      const newRenderer = new RiveRenderer();
+      rendererRef.current = newRenderer;
+      await newRenderer.loadModel(nextModel);
+      if (cancelled || rendererRef.current !== newRenderer) return;
+
+      const container = canvasContainerRef.current;
+      if (container && newRenderer.view) {
+        container.innerHTML = '';
+        container.appendChild(newRenderer.backgroundCanvas ?? document.createElement('div'));
+        container.appendChild(newRenderer.view);
       }
+      setModelLoaded(true);
     };
 
-    void switchModel().catch((err) => {
+    switchModel().catch((err) => {
       console.error('[PetStage] Failed to switch model:', err);
       if (!cancelled) setModelLoaded(true);
     });
@@ -217,33 +181,19 @@ export const PetStage: React.FC<PetStageProps> = ({
     };
   }, [modelIndex, models]);
 
-  // ── Resize canvas when petScale data attribute changes ──
   useEffect(() => {
-    if (!modelLoaded || !rendererRef.current) return;
-    const doResize = () => {
-      const scale = parseFloat(document.documentElement.dataset.petScale || '1');
-      const model = models[modelIndex];
-      if (!isNaN(scale) && model) {
-        const { width, height } = getModelCanvasSize(model);
-        const w = Math.round(width * scale);
-        const h = Math.round(height * scale);
-        rendererRef.current?.resize(w, h);
-      }
-    };
-    // Run once on mount
-    doResize();
-    // Watch for attribute changes
-    const observer = new MutationObserver(doResize);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-pet-scale'] });
-    return () => observer.disconnect();
-  }, [modelIndex, modelLoaded, models]);
+    if (!rendererRef.current) return;
+    const scale = parseFloat(document.documentElement.dataset.petScale || '1');
+    const w = Math.round(520 * scale);
+    const h = Math.round(760 * scale);
+    rendererRef.current.resize(w, h);
+  }, [modelLoaded]);
 
-  // ── Reset pointer when data-reset-pointer is set ──
   useEffect(() => {
     if (!modelLoaded) return;
     const doReset = () => {
       if (document.documentElement.dataset.resetPointer === 'now') {
-        rendererRef.current?.forceResetPose();
+        rendererRef.current?.resetPointer();
         document.documentElement.dataset.resetPointer = '';
       }
     };
@@ -252,11 +202,9 @@ export const PetStage: React.FC<PetStageProps> = ({
     return () => observer.disconnect();
   }, [modelLoaded]);
 
-  // ── Cursor tracking (eye follow) ──
   useEffect(() => {
     if (!modelLoaded) return;
 
-    // Default mouse follow to ON
     if (document.documentElement.dataset.mouseFollow === undefined) {
       document.documentElement.dataset.mouseFollow = 'true';
     }
@@ -312,7 +260,6 @@ export const PetStage: React.FC<PetStageProps> = ({
     };
   }, [modelLoaded]);
 
-  // ── Lip sync: 说话时嘴型动画 ──
   useEffect(() => {
     if (!modelLoaded || !rendererRef.current) return;
 
@@ -323,7 +270,6 @@ export const PetStage: React.FC<PetStageProps> = ({
     }
   }, [isSpeaking, ttsAmplitude, modelLoaded]);
 
-  // ── Keep pet interactive even after the transparent window is passthrough ──
   useEffect(() => {
     if (!modelLoaded) return;
 
@@ -364,7 +310,6 @@ export const PetStage: React.FC<PetStageProps> = ({
     };
   }, [interactionLocked, modelLoaded]);
 
-  // ── Mouse passthrough & drag ──
   useEffect(() => {
     if (!modelLoaded) return;
     const container = canvasContainerRef.current;
@@ -377,14 +322,7 @@ export const PetStage: React.FC<PetStageProps> = ({
     let dragOrigin = { right: 20, bottom: 20 };
 
     const getVisibleInsets = (): PetDragInsets => {
-      const bounds = canvasContainerRef.current?.getBoundingClientRect();
-      const visibleBounds = rendererRef.current?.getOpaqueBoundsClient();
-      return {
-        left: bounds && visibleBounds ? Math.max(0, visibleBounds.left - bounds.left) : 0,
-        right: bounds && visibleBounds ? Math.max(0, bounds.right - visibleBounds.right) : 0,
-        top: bounds && visibleBounds ? Math.max(0, visibleBounds.top - bounds.top) : 0,
-        bottom: bounds && visibleBounds ? Math.max(0, bounds.bottom - visibleBounds.bottom) : 0,
-      };
+      return { left: 0, right: 0, top: 0, bottom: 0 };
     };
 
     const clampPetPosition = (position: { right: number; bottom: number }, insets = dragInsetsRef.current ?? getVisibleInsets()) => {
@@ -403,8 +341,6 @@ export const PetStage: React.FC<PetStageProps> = ({
 
     const onMouseDown = (e: MouseEvent) => {
       if (e.button !== 0) return;
-      if (!isPointOnPet(e.clientX, e.clientY)) return;
-
       e.preventDefault();
       didMove = false;
       isDraggingRef.current = true;
@@ -417,10 +353,6 @@ export const PetStage: React.FC<PetStageProps> = ({
     };
 
     const onMouseMove = (e: MouseEvent) => {
-      if (!isDraggingRef.current) {
-        setMousePassthrough(!isPointOnPet(e.clientX, e.clientY));
-      }
-
       if (!isDraggingRef.current) return;
       didMove = true;
       if (!rafId) {
@@ -440,9 +372,6 @@ export const PetStage: React.FC<PetStageProps> = ({
       dragInsetsRef.current = null;
       if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
       onDragEnd?.();
-      if (!didMove) {
-        setMousePassthrough(true);
-      }
     };
 
     const onWindowResize = () => {
@@ -463,14 +392,12 @@ export const PetStage: React.FC<PetStageProps> = ({
     };
   }, [interactionLocked, modelLoaded, onDragStart, onDragEnd]);
 
-  // ── Click ──
   const lastClickTime = useRef(0);
   useEffect(() => {
     const container = canvasContainerRef.current;
     if (!container) return;
 
     const onClick = (e: MouseEvent) => {
-      if (!isPointOnPet(e.clientX, e.clientY)) return;
       const now = Date.now();
       if (now - lastClickTime.current < 300) {
         handlePetDoubleClick?.();
@@ -501,7 +428,7 @@ export const PetStage: React.FC<PetStageProps> = ({
     >
       <div
         ref={canvasContainerRef}
-        className="live2d-container"
+        className="rive-container"
         style={{
           position: 'absolute',
           right: petPosition.right,
@@ -522,7 +449,7 @@ export const PetStage: React.FC<PetStageProps> = ({
             fontFamily: 'system-ui, sans-serif',
           }}
         >
-          {loadError ? `Live2D load failed: ${loadError}` : 'Loading Live2D...'}
+          {loadError ? `Rive load failed: ${loadError}` : 'Loading Rive...'}
         </div>
       )}
     </div>

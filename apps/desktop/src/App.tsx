@@ -5,11 +5,13 @@ import { usePetStore } from './stores/pet-store';
 import { loadModelConfigs, ModelConfig } from './features/pet/model-registry';
 import { StreamingAudioPlayer } from './audio/streaming-player';
 import { BehaviorContextManager } from './features/pet-events/behavior-context';
-import { composeRuntimePlan } from './features/pet-events/behavior-plan';
+import { BehaviorPlan, composeRuntimePlan } from './features/pet-events/behavior-plan';
 import { HybridBehaviorPlanner, PlannerTrace, RuleBasedBehaviorPlanner } from './features/pet-events/behavior-planner';
 import { applyPetStateEvent } from './features/pet-events/apply-pet-event';
+import { PetEventAggregator } from './features/pet-events/pet-event-aggregator';
 import { isPetStateEvent, PetTTSOptions } from './features/pet-events/pet-event-schema';
 import { PetSessionManager } from './features/pet-events/pet-session-manager';
+import { PetPerformanceDirector } from './features/pet-performance/pet-performance-director';
 
 /** TTS 状态（来自主进程） */
 interface TTSStateEvent {
@@ -55,6 +57,9 @@ const App: React.FC = () => {
   const sessionManagerRef = useRef(new PetSessionManager());
   const behaviorContextManagerRef = useRef(new BehaviorContextManager());
   const behaviorPlannerRef = useRef(new RuleBasedBehaviorPlanner());
+  const petEventQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const petEventAggregatorRef = useRef<PetEventAggregator | null>(null);
+  const performanceDirectorRef = useRef<PetPerformanceDirector | null>(null);
   const audioPlayerRef = useRef<StreamingAudioPlayer | null>(null);
   const pendingTTSFallbackRef = useRef<Map<string, { text: string; duration: number }>>(new Map());
   const pendingTTSSequenceRef = useRef(0);
@@ -66,6 +71,7 @@ const App: React.FC = () => {
   const [activeAIConfig, setActiveAIConfig] = useState<AIPlannerConfigSnapshot | null>(null);
   const [aiConfigStatus, setAIConfigStatus] = useState('');
   const [plannerTrace, setPlannerTrace] = useState<PlannerTrace>({ source: 'rule' });
+  const [performanceHint, setPerformanceHint] = useState<BehaviorPlan | null>(null);
 
   const {
     currentAction,
@@ -88,6 +94,27 @@ const App: React.FC = () => {
     setIsSpeaking,
   } = usePetStore();
   currentActionRef.current = currentAction;
+
+  useEffect(() => {
+    const director = new PetPerformanceDirector();
+    performanceDirectorRef.current = director;
+    return () => {
+      director.dispose();
+      performanceDirectorRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    performanceDirectorRef.current?.playPose(
+      currentAction,
+      performanceHint?.pose === currentAction ? performanceHint.playback : undefined,
+      performanceHint?.pose === currentAction ? performanceHint.intensity : undefined,
+    );
+  }, [currentAction, actionRevision, performanceHint]);
+
+  useEffect(() => {
+    performanceDirectorRef.current?.playSpeech(Boolean(bubbleText || isSpeaking), performanceHint?.intensity);
+  }, [bubbleText, isSpeaking, performanceHint]);
 
   const clearActionResetTimer = useCallback(() => {
     if (actionResetTimerRef.current !== null) {
@@ -119,6 +146,7 @@ const App: React.FC = () => {
       runtimeRefreshTimerRef.current = null;
       const result = sessionManagerRef.current.refresh();
       const plan = composeRuntimePlan(result.action);
+      setPerformanceHint(plan);
       if (currentActionRef.current !== plan.pose) {
         setAction(plan.pose);
       }
@@ -259,22 +287,40 @@ const App: React.FC = () => {
     });
   }, [showBubble]);
 
+  const queuePetEvent = useCallback((event: Parameters<typeof applyPetStateEvent>[0]) => {
+    petEventQueueRef.current = petEventQueueRef.current
+      .catch(() => undefined)
+      .then(() => applyPetStateEvent(event, {
+        currentAction: currentActionRef.current,
+        sessionManager: sessionManagerRef.current,
+        contextManager: behaviorContextManagerRef.current,
+        planner: behaviorPlannerRef.current,
+        clearActionResetTimer,
+        setAction,
+        setExpression,
+        setProps,
+        setPerformanceHint,
+        scheduleIdle,
+        scheduleRuntimeRefresh,
+        handleSpeech,
+      }));
+  }, [clearActionResetTimer, handleSpeech, scheduleIdle, scheduleRuntimeRefresh, setAction, setExpression, setProps]);
+
+  useEffect(() => {
+    const aggregator = new PetEventAggregator(queuePetEvent);
+    petEventAggregatorRef.current = aggregator;
+    return () => {
+      aggregator.dispose();
+      if (petEventAggregatorRef.current === aggregator) {
+        petEventAggregatorRef.current = null;
+      }
+    };
+  }, [queuePetEvent]);
+
   const handlePetEvent = useCallback((eventRaw: unknown) => {
     if (!isPetStateEvent(eventRaw)) return;
-    void applyPetStateEvent(eventRaw, {
-      currentAction,
-      sessionManager: sessionManagerRef.current,
-      contextManager: behaviorContextManagerRef.current,
-      planner: behaviorPlannerRef.current,
-      clearActionResetTimer,
-      setAction,
-      setExpression,
-      setProps,
-      scheduleIdle,
-      scheduleRuntimeRefresh,
-      handleSpeech,
-    });
-  }, [clearActionResetTimer, currentAction, handleSpeech, scheduleIdle, scheduleRuntimeRefresh, setAction, setExpression, setProps]);
+    petEventAggregatorRef.current?.handle(eventRaw);
+  }, []);
 
   const applyPlannerMode = useCallback((config: any) => {
     setActiveAIConfig(config);
@@ -524,10 +570,6 @@ const App: React.FC = () => {
       <PetStage
         currentAction={currentAction}
         actionRevision={actionRevision}
-        currentExpression={currentExpression}
-        expressionRevision={expressionRevision}
-        currentProps={currentProps}
-        propsRevision={propsRevision}
         interactionLocked={settingsOpen}
         models={models}
         modelIndex={modelIndex}

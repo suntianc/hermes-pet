@@ -1,7 +1,10 @@
+export type ModelType = 'live2d' | 'rive';
+
 export interface ModelConfig {
   id: string;
   name: string;
   path: string;
+  type?: ModelType;
   window?: {
     width: number;
     height: number;
