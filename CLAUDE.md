@@ -2,6 +2,22 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## GSD Workflow
+
+This project uses Get Shit Done (GSD) workflow for structured planning and execution.
+
+**Planning artifacts are in `.planning/`:**
+- `.planning/PROJECT.md` — Project context and goals
+- `.planning/config.json` — Workflow preferences
+- `.planning/REQUIREMENTS.md` — 24 v1 requirements with REQ-IDs
+- `.planning/ROADMAP.md` — 4-phase execution plan
+- `.planning/STATE.md` — Current project state
+- `.planning/codebase/` — Codebase analysis (7 documents)
+- `.planning/research/` — Rive integration research
+
+**Workflow:** `/gsd-plan-phase N` → `/gsd-discuss-phase N` → `/gsd-execute-phase N` → `/gsd-verify-work`
+**Tracking:** `/gsd-progress` or `/gsd-stats`
+
 ## Commands
 
 ```bash
