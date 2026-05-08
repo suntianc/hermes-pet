@@ -9,8 +9,6 @@ files:
 extraResources:
   - from: assets
     to: assets
-  - from: public/models
-    to: models
 electronDist: ../../node_modules/electron/dist
 electronVersion: 41.5.0
 mac:
