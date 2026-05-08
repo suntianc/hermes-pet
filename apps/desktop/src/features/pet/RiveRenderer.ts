@@ -16,6 +16,12 @@ export class RiveRenderer implements PetRenderer {
   private currentAction: string = 'idle';
   private disposed = false;
 
+  // 缓存 SM 输入引用（由 cacheInputs 在 onLoad 时填充）
+  private stateInput: StateMachineInput | null = null;
+  private mouthOpenInput: StateMachineInput | null = null;
+  private lookXInput: StateMachineInput | null = null;
+  private lookYInput: StateMachineInput | null = null;
+
   get view(): HTMLCanvasElement | null {
     return this.mainCanvas;
   }
@@ -49,7 +55,11 @@ export class RiveRenderer implements PetRenderer {
       stateMachines: smName,
       onLoad: () => {
         charRive.resizeToCanvas();
-        this.setRiveStateInputs(charRive, smName, 'idle');
+        this.cacheInputs(charRive, smName);
+        // 初始化 state 为 idle(0)
+        if (this.stateInput) {
+          this.stateInput.value = 0;
+        }
       },
     });
 
@@ -140,26 +150,37 @@ export class RiveRenderer implements PetRenderer {
     this.bgCanvas = null;
   }
 
+  private cacheInputs(rive: Rive, smName: string): void {
+    const inputs = rive.stateMachineInputs(smName);
+    console.log('[RiveRenderer] Available SM inputs:', inputs?.map(i => `${i.name} (${StateMachineInputType[i.type]})`));
+    if (!inputs) return;
+    for (const input of inputs) {
+      if (input.name === RIVE_INPUTS.STATE) {
+        this.stateInput = input;
+      } else if (input.name === RIVE_INPUTS.MOUTH_OPEN) {
+        this.mouthOpenInput = input;
+      } else if (input.name === RIVE_INPUTS.LOOK_X) {
+        this.lookXInput = input;
+      } else if (input.name === RIVE_INPUTS.LOOK_Y) {
+        this.lookYInput = input;
+      }
+    }
+    console.log('[RiveRenderer] Cached inputs — state:', !!this.stateInput, 'mouth:', !!this.mouthOpenInput, 'lookX:', !!this.lookXInput, 'lookY:', !!this.lookYInput);
+  }
+
   private actionToState(action: string): RiveStateValue {
     const validStates: RiveStateValue[] = ['idle', 'thinking', 'speaking', 'happy', 'error',
       'searching', 'coding', 'terminal', 'confused', 'angry'];
     return validStates.includes(action as RiveStateValue) ? action as RiveStateValue : 'idle';
   }
 
+  /** 仅处理 trigger/boolean 输入。state number 使用缓存的 stateInput。 */
   private setRiveStateInputs(rive: Rive, smName: string, stateValue: RiveStateValue): void {
     const inputs = rive.stateMachineInputs(smName);
     for (const input of inputs) {
       if (input.type === StateMachineInputType.Trigger) {
         if (input.name === stateValue) {
           input.fire();
-        }
-      } else if (input.type === StateMachineInputType.Number) {
-        if (input.name === RIVE_INPUTS.STATE) {
-          const stateIndex: Record<string, number> = {
-            idle: 0, thinking: 1, speaking: 2, happy: 3, error: 4,
-            searching: 5, coding: 6, terminal: 7, confused: 8, angry: 9,
-          };
-          (input as StateMachineInput).value = stateIndex[stateValue] ?? 0;
         }
       } else if (input.type === StateMachineInputType.Boolean) {
         if (input.name === stateValue) {
