@@ -1,7 +1,7 @@
 # STATE.md — Hermes DeskPet
 
-**Status:** Phase 3 Complete
-**Current Phase:** Phase 4 — Model System Adaptation
+**Status:** All Phases Complete
+**Current Phase:** Complete — v1 Requirements Delivered
 
 ---
 
@@ -21,9 +21,9 @@ See: `.planning/PROJECT.md` (updated 2026-05-08)
 | 1 — Rive Rendering Pipeline | ✓ Complete | RIVE-01~07 | 100% |
 | 2 — Animation/Event Integration | ✓ Complete | SYNC-01~05 | 100% |
 | 3 — Live2D Cleanup | ✓ Complete | CLEAN-01~07 | 100% |
-| 4 — Model System Adaptation | ○ Pending | MODEL-01~05 | 0% |
+| 4 — Model System Adaptation | ✓ Complete | MODEL-01~05 | 100% |
 
-**Overall:** 18/24 requirements complete | 3/4 phases complete
+**Overall:** 24/24 requirements complete | 4/4 phases complete
 
 ---
 
@@ -34,26 +34,28 @@ See: `.planning/PROJECT.md` (updated 2026-05-08)
 - RiveRenderer + multi-canvas PetStage operational
 - model-registry updated with Rive type support
 
-## Last Session (Phase 3 Executed)
+## Last Session (Phase 4 Executed — Final Phase)
 
-- 3 plans executed across 2 waves, 8 tasks total
-- 126 Live2D/Cubism files deleted (~56K lines)
-- src/vendor/cubism/ (~200 files) + public/live2dcubismcore.js + public/Framework/ shaders + public/models/ (~50 files) — all removed
-- Live2DRenderer.ts (600 lines) + capability-resolver.ts + PetPerformanceDirector.ts — deleted
-- vite.config.mts + tsconfig.json — @framework alias removed
-- model-registry.ts + PetRenderer.ts — 'live2d' type removed
-- main.tsx — Cubism WASM loading removed
-- App.tsx — PetPerformanceDirector removed, .live2d-container → .rive-container
-- models.json — Live2D entries removed
-- model-manager.ts — extract-zip + .model3.json logic removed, Phase 4 stubs
-- package.json — gsap + extract-zip removed
-- Build: npm run build 0 errors, grep audit zero Live2D references
-- Final project size: -56,010 lines, +1 Rive runtime (9 deps)
+- 2 plans executed across 2 waves, 6 tasks
+- model-manager.ts: .riv import dialog + importRiveModel + listUserModels reimplemented + SQLite skip guard
+- electron-builder.yml: removed stale public/models reference
+- RIVE_MODEL_INTEGRATION.md: created (260 lines) with SM inputs table, file placement guide, models.json example
+- npm run build: ✓ 0 errors
+- grep audit: ✓ zero stale references
+
+## Summary
+
+Live2D → Rive migration complete. All 24 v1 requirements delivered across 4 phases.
+
+- **Phase 1:** RiveRenderer + multi-canvas rendering + WASM preload (RIVE-01~07)
+- **Phase 2:** SM input mapping + TTS lip sync + mouse follow + idle return (SYNC-01~05)
+- **Phase 3:** Full Live2D/Cubism code removal (-56K lines) (CLEAN-01~07)
+- **Phase 4:** .riv import flow + model scanning + docs + cleanup (MODEL-01~05)
 
 ## Next Action
 
 ```
-/gsd-discuss-phase 4
+Project complete. User provides .riv model files.
 ```
 
 ---
