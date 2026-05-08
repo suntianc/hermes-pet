@@ -1,4 +1,4 @@
-export type ModelType = 'live2d' | 'rive';
+export type ModelType = 'rive';
 
 export interface ModelConfig {
   id: string;
@@ -43,41 +43,7 @@ interface ModelRegistryFile {
   models?: ModelConfig[];
 }
 
-export const FALLBACK_MODELS: ModelConfig[] = [
-  {
-    id: 'jian',
-    name: 'Jian',
-    path: 'models/Jian/Jian.model3.json',
-    window: { width: 1000, height: 900 },
-    canvas: { width: 1000, height: 900 },
-    actions: {
-      idle: { motion: { group: 'Idle', index: 0 } },
-    },
-    capabilities: {
-      expressions: {
-        neutral: null,
-        happy: 'HeartEyes',
-        angry: 'Angry',
-        confused: 'WhiteEyes',
-        worried: 'Tear',
-        surprised: 'StarEyes',
-      },
-      props: {
-        leftHand: {
-          enable: { ParamSwitch11: 1 },
-          disable: { ParamSwitch11: 0 },
-        },
-        rightHand: {
-          enable: { ParamSwitch10: 1 },
-          disable: { ParamSwitch10: 0 },
-        },
-      },
-      propFallbacks: {
-        microphone: ['leftHand', 'rightHand'],
-      },
-    },
-  },
-];
+export const FALLBACK_MODELS: ModelConfig[] = [];
 
 const MODEL_REGISTRY_PATH = 'assets/models/models.json';
 

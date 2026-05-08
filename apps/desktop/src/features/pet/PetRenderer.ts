@@ -19,7 +19,7 @@ export interface PetRenderer {
   destroy(): void;
 }
 
-export type PetRendererType = 'live2d' | 'spine' | 'gif' | 'vrm';
+export type PetRendererType = 'spine' | 'gif' | 'vrm';
 
 export interface RendererConfig {
   type: PetRendererType;
