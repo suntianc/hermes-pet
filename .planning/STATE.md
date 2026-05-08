@@ -34,10 +34,16 @@ See: `.planning/PROJECT.md` (updated 2026-05-08)
 - RiveRenderer + multi-canvas PetStage operational
 - model-registry updated with Rive type support
 
+## Current Session
+
+- Phase 2 context gathered: 5 gray areas analyzed, all agent-decided
+- Implementation decisions: idle timer hybrid, PetStore polling lip sync, RiveRenderer lerp smoothing, immediate action interrupt
+- CONTEXT.md written with 17 locked decisions (D-01~D-17)
+
 ## Next Action
 
 ```
-/gsd-discuss-phase 2
+/gsd-plan-phase 2
 ```
 
 ---
