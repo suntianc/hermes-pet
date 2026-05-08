@@ -48,6 +48,8 @@
 
 **Requirements:** CLEAN-01, CLEAN-02, CLEAN-03, CLEAN-04, CLEAN-05, CLEAN-06, CLEAN-07
 
+**Plans:** 3 plans in 2 waves
+
 **Success Criteria:**
 1. `src/vendor/cubism/` 目录删除
 2. `public/live2dcubismcore.js` 和 `public/Framework/` 删除
@@ -58,6 +60,11 @@
 7. 项目中无 Live2D/Cubism 引用遗留
 8. 应用启动和运行正常（回归测试）
 
+**Plans:**
+- [ ] 03-01-PLAN.md — 删除所有 Live2D 文件和目录（CLEAN-01~04, D-16）
+- [ ] 03-02-PLAN.md — 修复编译配置 + 类型定义 + WASM 加载（CLEAN-05~06）
+- [ ] 03-03-PLAN.md — App.tsx/models.json/model-manager.ts/package.json 清理（CLEAN-07, D-15, D-17~19）
+
 ---
 
 ### Phase 4: Model System Adaptation
@@ -66,12 +73,18 @@
 
 **Requirements:** MODEL-01, MODEL-02, MODEL-03, MODEL-04, MODEL-05
 
+**Plans:** 2 plans in 2 waves
+
 **Success Criteria:**
 1. `model-registry.ts` 支持 `.riv` 模型类型注册
 2. Rive 模型不触发 SQLite 动作索引（SQLite 保留但暂不用）
 3. 模型导入流程可处理 `.riv` 文件
 4. `vivipet-assets://` 协议检查并清理（如不再需要）
 5. 提供清晰的 Rive 模型接入文档
+
+**Plans:**
+- [ ] 04-01-PLAN.md — model-manager.ts 重构：.riv 导入、用户模型列表、索引跳过守卫 (MODEL-02, MODEL-03)
+- [ ] 04-02-PLAN.md — electron-builder.yml 修复 + RIVE_MODEL_INTEGRATION.md 文档 + 全体验证 (MODEL-04, MODEL-05)
 
 ---
 
