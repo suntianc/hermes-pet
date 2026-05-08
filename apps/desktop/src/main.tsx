@@ -36,6 +36,12 @@ function loadScript(src: string): Promise<void> {
 
 async function bootstrap(): Promise<void> {
   await loadScript('./live2dcubismcore.js');
+
+  const baseUrl = window.location.href;
+  if (baseUrl.startsWith('http')) {
+    console.log('[Rive] Using auto WASM (dev mode)');
+  }
+
   await import('./styles.css');
   const { default: App } = await import('./App');
 
