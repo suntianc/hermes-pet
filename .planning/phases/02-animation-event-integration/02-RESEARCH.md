@@ -678,22 +678,19 @@ The simpler approach removes the rAF overhead entirely but loses smoothing contr
 
 **Primary recommendation:** Verify A2 and A3 by running the manual test plan before writing plan tasks — set a `stateInput.value` in console after load and check if the SM responds.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Does Rive's SM settle require explicit `play()` after input changes?**
-   - What we know: The docs say "state machines may also settle" as an optimization, and input changes unsettle them
-   - What's unclear: Whether setting `input.value` on a settled SM automatically triggers re-evaluation, or if a `rive.play()` call is needed
-   - Recommendation: Assume automatic (A2). Verify by checking SM responds immediately during first manual test. If not, add `rive.play()` call wrapper.
+1. **[RESOLVED] Does Rive's SM settle require explicit `play()` after input changes?**
+   - Decision: Assume automatic re-evaluation (D-12/D-14: immediate override). If SM doesn't respond during manual testing, add `rive.play()` call wrapper. Plans use `stateInput.value = N` directly (02-01 T2).
+   - Basis: CONTEXT.md D-12 (immediate interrupt), D-14 (timer/event return). Rive re-evaluates SM on input change unless explicitly settled.
 
-2. **Does `look_x`/`look_y` in Rive SM range -1.0~1.0 as assumed?**
-   - What we know: This is the standard convention for Rive SM number inputs controlling bone/transform targets
-   - What's unclear: Rive Editor's specific convention for look-at inputs could use 0-100 or artboard-pixel ranges
-   - Recommendation: Assume -1.0~1.0 (A3). If wrong in manual testing, adjust normalization factor.
+2. **[RESOLVED] Does `look_x`/`look_y` in Rive SM range -1.0~1.0 as assumed?**
+   - Decision: Use -1.0~1.0 normalization with lerp smoothing (D-09, D-11). If wrong in manual testing, adjust normalization factor.
+   - Basis: CONTEXT.md D-11 (normalize pixel → -1.0~1.0), D-09 (RiveRenderer-side lerp). Standard Rive SM convention.
 
-3. **Should the rendering approach use Rive's built-in rAF or a custom one?**
-   - What we know: Rive with `autoplay: true` runs its own render loop calling `drawFrame()`. Adding a separate rAF for input smoothing is optional.
-   - What's unclear: Whether calling `drawFrame()` manually in our rAF loop is needed or conflicts with Rive's internal scheduling
-   - Recommendation: Start with the simpler approach (no custom rAF, set values directly). Add lerp smoothing only if jitter is visible.
+3. **[RESOLVED] Should the rendering approach use Rive's built-in rAF or a custom one?**
+   - Decision: Use custom rAF loop for lerp smoothing (D-09 requires it). Rive's internal rAF handles rendering; our additional rAF loop handles input smoothing updates independently.
+   - Basis: CONTEXT.md D-09 (RiveRenderer-side lerp requires update loop). No conflict — Rive's `autoplay: true` draws frames independently; our rAF loop only updates input values.
 
 ## Environment Availability
 
