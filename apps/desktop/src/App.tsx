@@ -11,7 +11,7 @@ import { applyPetStateEvent } from './features/pet-events/apply-pet-event';
 import { PetEventAggregator } from './features/pet-events/pet-event-aggregator';
 import { isPetStateEvent, PetTTSOptions } from './features/pet-events/pet-event-schema';
 import { PetSessionManager } from './features/pet-events/pet-session-manager';
-import { PetPerformanceDirector } from './features/pet-performance/pet-performance-director';
+
 
 /** TTS 状态（来自主进程） */
 interface TTSStateEvent {
@@ -59,7 +59,7 @@ const App: React.FC = () => {
   const behaviorPlannerRef = useRef(new RuleBasedBehaviorPlanner());
   const petEventQueueRef = useRef<Promise<void>>(Promise.resolve());
   const petEventAggregatorRef = useRef<PetEventAggregator | null>(null);
-  const performanceDirectorRef = useRef<PetPerformanceDirector | null>(null);
+
   const audioPlayerRef = useRef<StreamingAudioPlayer | null>(null);
   const pendingTTSFallbackRef = useRef<Map<string, { text: string; duration: number }>>(new Map());
   const pendingTTSSequenceRef = useRef(0);
@@ -94,27 +94,6 @@ const App: React.FC = () => {
     setIsSpeaking,
   } = usePetStore();
   currentActionRef.current = currentAction;
-
-  useEffect(() => {
-    const director = new PetPerformanceDirector();
-    performanceDirectorRef.current = director;
-    return () => {
-      director.dispose();
-      performanceDirectorRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    performanceDirectorRef.current?.playPose(
-      currentAction,
-      performanceHint?.pose === currentAction ? performanceHint.playback : undefined,
-      performanceHint?.pose === currentAction ? performanceHint.intensity : undefined,
-    );
-  }, [currentAction, actionRevision, performanceHint]);
-
-  useEffect(() => {
-    performanceDirectorRef.current?.playSpeech(Boolean(bubbleText || isSpeaking), performanceHint?.intensity);
-  }, [bubbleText, isSpeaking, performanceHint]);
 
   const clearActionResetTimer = useCallback(() => {
     if (actionResetTimerRef.current !== null) {
@@ -412,7 +391,7 @@ const App: React.FC = () => {
     const handlePointerMove = (event: PointerEvent) => {
       const panel = settingsPanelRef.current;
       const insideSettings = Boolean(panel && panel.contains(event.target as Node));
-      const onPet = document.elementFromPoint(event.clientX, event.clientY)?.closest?.('.live2d-container');
+      const onPet = document.elementFromPoint(event.clientX, event.clientY)?.closest?.('.rive-container');
       const shouldPassThrough = !insideSettings && !onPet;
       document.documentElement.dataset.mousePassthrough = String(shouldPassThrough);
       (window as any).electronAPI?.petWindow?.setIgnoreMouseEvents?.(shouldPassThrough, { forward: true });
