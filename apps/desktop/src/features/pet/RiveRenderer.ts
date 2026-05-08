@@ -30,6 +30,16 @@ export class RiveRenderer implements PetRenderer {
     searching: 5, coding: 6, terminal: 7, confused: 8, angry: 9,
   };
 
+  // TTS 嘴型同步 (SYNC-02)
+  private isSpeaking = false;
+  private currentAmplitude = 0;
+  private targetAmplitude = 0;
+  private lastMouthValue = 0;
+  private readonly AMPLITUDE_CLAMP = 0.05;    // D-07: 削波阈值
+  private readonly AMP_LERP_FACTOR = 0.2;     // 振幅平滑系数
+  private mouthCurrentlyOpen = false;          // 削波迟滞状态
+  private readonly AMP_HYSTERESIS = 0.02;      // 迟滞带宽度
+
   get view(): HTMLCanvasElement | null {
     return this.mainCanvas;
   }
@@ -131,7 +141,52 @@ export class RiveRenderer implements PetRenderer {
   setParameters(params: Record<string, number>): void {
   }
 
-  setSpeaking(speaking: boolean, amplitude?: number): void {
+  // D-06: 直接设置 mouth_open number 输入
+  // D-07: 低于 0.05 的 RMS 忽略
+  // D-08: 0.0~1.0 直接透传
+  setSpeaking(speaking: boolean, amplitude = 0): void {
+    this.isSpeaking = speaking;
+    if (speaking) {
+      // D-07: 振幅削波
+      this.targetAmplitude = amplitude > this.AMPLITUDE_CLAMP
+        ? Math.min(amplitude, 1.0)  // D-08: 范围 0.0~1.0
+        : 0;
+    } else {
+      this.targetAmplitude = 0;
+    }
+  }
+
+  /** 在 rAF 循环中每帧调用: 平滑振幅并设置 mouth_open SM 输入 */
+  private updateLipSync(): void {
+    // 振幅平滑 (指数移动平均)
+    this.currentAmplitude += (this.targetAmplitude - this.currentAmplitude) * this.AMP_LERP_FACTOR;
+
+    if (!this.mouthOpenInput) return;
+
+    // 迟滞削波 (防止在阈值附近快速开关)
+    if (this.mouthCurrentlyOpen) {
+      // 已开口: 降到 0.03 以下才关闭
+      const mouthValue = this.currentAmplitude < this.AMPLITUDE_CLAMP - this.AMP_HYSTERESIS
+        ? 0 : this.currentAmplitude;
+      this.mouthCurrentlyOpen = mouthValue > 0;
+      if (Math.abs(mouthValue - this.lastMouthValue) > 0.005) {
+        this.mouthOpenInput.value = mouthValue;
+        this.lastMouthValue = mouthValue;
+        console.log(`[RiveRenderer] mouth_open → ${mouthValue.toFixed(3)}`);
+      }
+    } else {
+      // 已闭口: 超过 0.05 才开口
+      const mouthValue = this.currentAmplitude > this.AMPLITUDE_CLAMP
+        ? this.currentAmplitude : 0;
+      this.mouthCurrentlyOpen = mouthValue > 0;
+      if (Math.abs(mouthValue - this.lastMouthValue) > 0.005) {
+        this.mouthOpenInput.value = mouthValue;
+        this.lastMouthValue = mouthValue;
+        if (mouthValue > 0) {
+          console.log(`[RiveRenderer] mouth_open → ${mouthValue.toFixed(3)}`);
+        }
+      }
+    }
   }
 
   async speak(text: string): Promise<void> {
