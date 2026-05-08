@@ -193,8 +193,9 @@ async function importRiveModel(rivFilePath: string): Promise<{
 }
 
 /**
- * Scan userData/models/ for imported models and return their configs.
- * Stubbed for Phase 3 — Phase 4 (MODEL-03) will reimplement for .riv files.
+ * Scan userData/models/ for imported Rive models and return their configs.
+ * Each model directory should contain a .vivipet-registry.json file
+ * created during importModelViaDialog/importRiveModel.
  */
 export function listUserModels(): Array<{
   id: string;
@@ -203,8 +204,44 @@ export function listUserModels(): Array<{
   window?: { width: number; height: number };
   actions?: Record<string, RendererActionConfig>;
 }> {
-  console.warn('[model-manager] listUserModels stubbed — Phase 4 will reimplement for .riv');
-  return [];
+  const modelsDir = path.join(app.getPath('userData'), USER_MODELS_DIR);
+  if (!fs.existsSync(modelsDir)) {
+    return [];
+  }
+
+  const results: Array<{
+    id: string;
+    name: string;
+    path: string;
+    window?: { width: number; height: number };
+    actions?: Record<string, RendererActionConfig>;
+  }> = [];
+
+  const entries = fs.readdirSync(modelsDir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+
+    const registryPath = path.join(modelsDir, entry.name, '.vivipet-registry.json');
+    if (!fs.existsSync(registryPath)) continue;
+
+    try {
+      const data = JSON.parse(fs.readFileSync(registryPath, 'utf-8'));
+      if (data.id && data.name && data.path) {
+        results.push({
+          id: data.id,
+          name: data.name,
+          path: data.path,
+          window: data.window,
+        });
+      }
+    } catch (err) {
+      log.warn(`[ModelManager] Failed to parse registry: ${registryPath}`, err);
+      // Per RESEARCH Pitfall 5: one bad registry should not block all user models
+    }
+  }
+
+  return results;
 }
 
 export function indexBundledModels(models: BundledModelConfig[]): void {
