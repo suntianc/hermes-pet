@@ -49,6 +49,9 @@ export class RiveRenderer implements PetRenderer {
   private lastLookY = 999;
   private readonly LOOK_LERP_FACTOR = 0.1;   // D-09: lerp 平滑系数
 
+  // rAF 渲染循环
+  private rafId = 0;
+
   get view(): HTMLCanvasElement | null {
     return this.mainCanvas;
   }
@@ -88,6 +91,7 @@ export class RiveRenderer implements PetRenderer {
           this.stateInput.value = 0;
           console.log('[RiveRenderer] Initial state → idle(0)');
         }
+        this.startRenderLoop();
       },
     });
 
@@ -239,6 +243,26 @@ export class RiveRenderer implements PetRenderer {
     }
   }
 
+  /** 开始 rAF 渲染循环: 每帧更新 SM 输入平滑值 */
+  private startRenderLoop(): void {
+    if (this.rafId) return; // 防止重复启动
+    const loop = () => {
+      if (this.disposed) return;
+      this.updateMouseFollow();
+      this.updateLipSync();
+      this.rafId = requestAnimationFrame(loop);
+    };
+    this.rafId = requestAnimationFrame(loop);
+  }
+
+  /** 停止 rAF 渲染循环 */
+  private stopRenderLoop(): void {
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = 0;
+    }
+  }
+
   resize(width: number, height: number): void {
     const dpr = window.devicePixelRatio || 1;
     if (this.mainCanvas) {
@@ -265,6 +289,7 @@ export class RiveRenderer implements PetRenderer {
 
   destroy(): void {
     this.disposed = true;
+    this.stopRenderLoop();
     this.clearIdleTimer();
     this.cleanupInstances();
     this.mainCanvas = null;
