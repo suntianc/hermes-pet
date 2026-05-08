@@ -395,17 +395,15 @@ This is a pure deletion phase — removing dead code that is no longer executed.
 | A1 | No code branches check `modelConfig.type === 'live2d'` | Architecture Patterns | Low — if such branching exists, compile will catch it |
 | A2 | `PetPerformanceDirector` with gsap is still needed | Critical Findings | Medium — if removed and no visual effect visible, Option 3 becomes viable |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Does `PetPerformanceDirector` visual effects still work over Rive canvas?**
-   - What we know: It bounces/scales `targetElement()` which is `.rive-container` after rename
-   - What's unclear: Whether the GSAP CSS transforms are visible over the Rive WebGL canvas (canvas covers the container with pointer-events: none?)
-   - Recommendation: Test after Phase 2. If Rive canvas fully covers the container, GSAP transforms may have no visible effect. If so, Option 3 (delete PetPerformanceDirector entirely) becomes viable.
+1. **[RESOLVED] Does `PetPerformanceDirector` visual effects still work over Rive canvas?**
+   - Decision: Delete `pet-performance-director.ts` entirely (D-16). Rive SM handles all pet animations. User confirmed: "既然都迁移到 rive 了，就用方案 3" (delete PetPerformanceDirector).
+   - Plan: 03-01 Task 2: `git rm apps/desktop/src/features/pet-performance/pet-performance-director.ts`
 
-2. **Can `importModelViaDialog()` be fully gutted?**
-   - What we know: IPC handler `pet:model:import` calls it. Returns `null` for now.
-   - What's unclear: Whether the renderer expects a valid return. App.tsx line 486 checks `if (result)` before showing "Model imported!"
-   - Recommendation: Keep the function signature but return `null` (import not yet supported for .riv). Update App.tsx to show "Import not yet supported" if needed.
+2. **[RESOLVED] Can `importModelViaDialog()` be fully gutted?**
+   - Decision: Keep function signature as Phase 4 placeholder stub, remove gsap/extract-zip code from its body. Return `null`.
+   - Plan: 03-03 Task 2: model-manager.ts cleanup — remove extract-zip import + .model3.json logic, keep stubs.
 
 ## Metadata
 

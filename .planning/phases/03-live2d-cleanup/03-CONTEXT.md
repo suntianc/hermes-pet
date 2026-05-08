@@ -36,15 +36,15 @@
 - **D-12:** `src/main.tsx` — 移除 `loadScript('./live2dcubismcore.js')` (Line 38)，`loadScript` 函数可以保留（通用工具函数）或按 unused 判断删除
 - **D-13:** `src/features/pet/model-registry.ts` — 从 `ModelType` 移除 `'live2d'`，只保留 `'rive'`；`FALLBACK_MODELS` 中 Jian 的 path 改为 Rive .riv 路径或移除此 fallback
 - **D-14:** `src/features/pet/PetRenderer.ts` — 从 `PetRendererType` 移除 `'live2d'`，只保留 `'spine' | 'gif' | 'vrm'`
-- **D-15:** `src/App.tsx:415` — 将 `.live2d-container` 改为 `.rive-container`
-- **D-16:** `src/features/pet-performance/pet-performance-director.ts:12` — 将 `.live2d-container` 改为 `.rive-container`
+- **D-15:** `src/App.tsx` — 重构：移除 `PetPerformanceDirector` 引用和所有 gsap 相关代码（`performanceDirectorRef`, `performanceHint`, `playPose`, `playSpeech`），将 `.live2d-container` 改为 `.rive-container`
+- **D-16:** `src/features/pet-performance/pet-performance-director.ts` — 删除整个文件（Rive SM 替代了 gsap 动画效果）
 
 ### 要修改的数据文件
 - **D-17:** `public/assets/models/models.json` — 移除现有 Live2D 模型条目（Jian/Vivian），Phase 4 添加 .riv 条目
 
 ### 要修改的主进程文件
 - **D-18:** `electron/model-manager.ts` — 移除 `import extractZip from 'extract-zip'`（Line 6），移除 `.model3.json` 文件扫描/校验逻辑（Line 115-120），保留其余结构（Phase 4 中适配 .riv）
-- **D-19:** `package.json` — 移除 `gsap` 和 `extract-zip` 依赖
+- **D-19:** `package.json` — 移除 `extract-zip` 和 `gsap` 依赖（PetPerformanceDirector 删除后 gsap 不再使用）
 
 ### 不在此阶段处理的内容
 - **`electron/action-index.ts`** (SQLite 模块) — 保留不动，MODEL-02 说明暂留
@@ -85,8 +85,8 @@
 - `apps/desktop/src/main.tsx` — 需移除 Cubism WASM 加载
 - `apps/desktop/src/features/pet/model-registry.ts` — 需移除 `'live2d'` 类型
 - `apps/desktop/src/features/pet/PetRenderer.ts` — 需移除 `'live2d'` 渲染器类型
-- `apps/desktop/src/App.tsx` — 需重命名 CSS 类
-- `apps/desktop/src/features/pet-performance/pet-performance-director.ts` — 需重命名 CSS 类
+- `apps/desktop/src/App.tsx` — 重构移除 PetPerformanceDirector + CSS 类重命名
+- `apps/desktop/src/features/pet-performance/pet-performance-director.ts` — 删除
 - `apps/desktop/public/assets/models/models.json` — 需移除 Live2D 条目
 - `apps/desktop/electron/model-manager.ts` — 需移除 extract-zip 和 .model3.json 逻辑
 - `apps/desktop/package.json` — 需移除 gsap 和 extract-zip
@@ -96,6 +96,7 @@
 - `apps/desktop/src/vendor/live2dcubismcore.d.ts`
 - `apps/desktop/src/features/pet/Live2DRenderer.ts`
 - `apps/desktop/src/features/pet/capability-resolver.ts`
+- `apps/desktop/src/features/pet-performance/pet-performance-director.ts`
 - `apps/desktop/public/live2dcubismcore.js`
 - `apps/desktop/public/Framework/` (entire directory)
 - `apps/desktop/public/models/` (entire directory, all Live2D models)
