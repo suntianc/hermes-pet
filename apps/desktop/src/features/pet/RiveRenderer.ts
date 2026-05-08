@@ -40,6 +40,15 @@ export class RiveRenderer implements PetRenderer {
   private mouthCurrentlyOpen = false;          // 削波迟滞状态
   private readonly AMP_HYSTERESIS = 0.02;      // 迟滞带宽度
 
+  // 鼠标跟随 (SYNC-03)
+  private targetLookX = 0;
+  private targetLookY = 0;
+  private currentLookX = 0;
+  private currentLookY = 0;
+  private lastLookX = 999;   // 确保首次设置生效
+  private lastLookY = 999;
+  private readonly LOOK_LERP_FACTOR = 0.1;   // D-09: lerp 平滑系数
+
   get view(): HTMLCanvasElement | null {
     return this.mainCanvas;
   }
@@ -192,10 +201,42 @@ export class RiveRenderer implements PetRenderer {
   async speak(text: string): Promise<void> {
   }
 
+  // D-11: 画布像素坐标 → SM 空间 -1.0~1.0
+  // D-09: 设置 lerp 目标值，实际插值在 rAF 循环中完成
   lookAt(x: number, y: number): void {
+    const canvas = this.mainCanvas;
+    if (!canvas) return;
+
+    // D-11: 归一化: canvas pixel → -1.0..1.0
+    this.targetLookX = (x / canvas.width) * 2 - 1;
+    this.targetLookY = (y / canvas.height) * 2 - 1;
+
+    // 削波到 SM 期望范围
+    this.targetLookX = Math.max(-1, Math.min(1, this.targetLookX));
+    this.targetLookY = Math.max(-1, Math.min(1, this.targetLookY));
   }
 
+  // 将宠物视线恢复居中（鼠标跟随禁用时调用）
   resetPointer(): void {
+    this.targetLookX = 0;
+    this.targetLookY = 0;
+  }
+
+  /** 在 rAF 循环中每帧调用: lerp 平滑并设置 look_x/look_y SM 输入 */
+  private updateMouseFollow(): void {
+    // D-09: 指数平滑 (lerp)
+    this.currentLookX += (this.targetLookX - this.currentLookX) * this.LOOK_LERP_FACTOR;
+    this.currentLookY += (this.targetLookY - this.currentLookY) * this.LOOK_LERP_FACTOR;
+
+    // 仅在变化显著时更新 SM 输入（避免冗余 WASM 调用）
+    if (this.lookXInput && Math.abs(this.currentLookX - this.lastLookX) > 0.001) {
+      this.lookXInput.value = this.currentLookX;
+      this.lastLookX = this.currentLookX;
+    }
+    if (this.lookYInput && Math.abs(this.currentLookY - this.lastLookY) > 0.001) {
+      this.lookYInput.value = this.currentLookY;
+      this.lastLookY = this.currentLookY;
+    }
   }
 
   resize(width: number, height: number): void {
