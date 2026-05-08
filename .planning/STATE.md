@@ -54,7 +54,7 @@ See: `.planning/PROJECT.md` (updated 2026-05-08)
 ## Next Action
 
 ```
-/gsd-discuss-phase 3
+/gsd-plan-phase 3
 ```
 
 ---
