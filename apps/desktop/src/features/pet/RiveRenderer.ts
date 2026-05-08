@@ -22,6 +22,14 @@ export class RiveRenderer implements PetRenderer {
   private lookXInput: StateMachineInput | null = null;
   private lookYInput: StateMachineInput | null = null;
 
+  // Idle 自动返回定时器 (D-02/D-04)
+  private idleTimerId: number | null = null;
+  private readonly MOMENTARY_ACTIONS = new Set(['happy', 'error', 'clicked', 'doubleClicked', 'wake']);
+  private readonly RIVE_STATE_INDEX: Record<string, number> = {
+    idle: 0, thinking: 1, speaking: 2, happy: 3, error: 4,
+    searching: 5, coding: 6, terminal: 7, confused: 8, angry: 9,
+  };
+
   get view(): HTMLCanvasElement | null {
     return this.mainCanvas;
   }
@@ -91,10 +99,24 @@ export class RiveRenderer implements PetRenderer {
   }
 
   async playAction(actionName: string, options?: PlayActionOptions): Promise<void> {
+    // D-12: 立即打断 — 先清除任何待处理的 idle 返回
+    this.clearIdleTimer();
+
     this.currentAction = actionName;
+
+    // D-01: 通过缓存的 stateInput 直接设置 state number
     const stateValue = this.actionToState(actionName);
-    for (const inst of this.instances) {
-      this.setRiveStateInputs(inst.rive, inst.stateMachineName, stateValue);
+    const stateIndex = this.RIVE_STATE_INDEX[stateValue] ?? 0;
+    if (this.stateInput) {
+      this.stateInput.value = stateIndex;
+      console.log(`[RiveRenderer] Action: ${actionName} → state ${stateIndex} (${stateValue})`); // D-17
+    }
+
+    // D-02: 瞬间动作 → 设置 idle 自动返回定时器
+    // D-03: 持续动作 → 不设置定时器，等待外部触发
+    const isMomentary = options?.playback === 'momentary' || this.MOMENTARY_ACTIONS.has(actionName);
+    if (isMomentary) {
+      this.scheduleIdle(400); // 默认 400ms，agent's discretion
     }
   }
 
@@ -140,6 +162,7 @@ export class RiveRenderer implements PetRenderer {
   }
 
   idle(): void {
+    this.clearIdleTimer();
     this.playAction('idle');
   }
 
@@ -148,6 +171,25 @@ export class RiveRenderer implements PetRenderer {
     this.cleanupInstances();
     this.mainCanvas = null;
     this.bgCanvas = null;
+  }
+
+  /** D-04: 公开 scheduleIdle 供外部调用覆盖默认定时 */
+  scheduleIdle(delay: number): void {
+    this.clearIdleTimer();
+    this.idleTimerId = window.setTimeout(() => {
+      this.idleTimerId = null;
+      if (this.stateInput) {
+        this.stateInput.value = 0; // idle
+        console.log('[RiveRenderer] Idle auto-return triggered');
+      }
+    }, delay);
+  }
+
+  private clearIdleTimer(): void {
+    if (this.idleTimerId !== null) {
+      window.clearTimeout(this.idleTimerId);
+      this.idleTimerId = null;
+    }
   }
 
   private cacheInputs(rive: Rive, smName: string): void {
