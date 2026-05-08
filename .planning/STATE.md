@@ -1,7 +1,7 @@
 # STATE.md — Hermes DeskPet
 
-**Status:** Planned
-**Current Phase:** Phase 1 — Rive Rendering Pipeline
+**Status:** Phase 1 Complete
+**Current Phase:** Phase 2 — Animation/Event Integration
 
 ---
 
@@ -18,25 +18,26 @@ See: `.planning/PROJECT.md` (updated 2026-05-08)
 
 | Phase | Status | Requirements | Progress |
 |-------|--------|-------------|----------|
-| 1 — Rive Rendering Pipeline | ◆ Planned | RIVE-01~07 | 0% |
+| 1 — Rive Rendering Pipeline | ✓ Complete | RIVE-01~07 | 100% |
 | 2 — Animation/Event Integration | ○ Pending | SYNC-01~05 | 0% |
 | 3 — Live2D Cleanup | ○ Pending | CLEAN-01~07 | 0% |
 | 4 — Model System Adaptation | ○ Pending | MODEL-01~05 | 0% |
 
-**Overall:** 0/24 requirements complete | 0/4 phases complete
+**Overall:** 6/24 requirements complete | 1/4 phases complete
 
 ---
 
 ## Last Session
 
-- Phase 1 planned: 2 plans in 1 wave
-- RiveRenderer + multi-canvas PetStage + model lifecycle
-- All 6 RIVE requirements covered by plans
+- Phase 1 executed: 2 plans completed
+- @rive-app/canvas installed and integrated
+- RiveRenderer + multi-canvas PetStage operational
+- model-registry updated with Rive type support
 
 ## Next Action
 
 ```
-/gsd-execute-phase 1
+/gsd-discuss-phase 2
 ```
 
 ---
