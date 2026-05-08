@@ -156,7 +156,7 @@ async function importModelZip(_zipPath: string): Promise<{
 
 /**
  * Scan userData/models/ for imported models and return their configs.
- * Looks for .vivipet-registry.json in each subdirectory.
+ * Stubbed for Phase 3 — Phase 4 (MODEL-03) will reimplement for .riv files.
  */
 export function listUserModels(): Array<{
   id: string;
@@ -165,51 +165,8 @@ export function listUserModels(): Array<{
   window?: { width: number; height: number };
   actions?: Record<string, RendererActionConfig>;
 }> {
-  const modelsDir = resolveUserModelPath('');
-  if (!fs.existsSync(modelsDir)) {
-    return [];
-  }
-
-  const entries = fs.readdirSync(modelsDir, { withFileTypes: true });
-  const models: Array<{
-    id: string;
-    name: string;
-    path: string;
-    window?: { width: number; height: number };
-    actions?: Record<string, RendererActionConfig>;
-  }> = [];
-
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-
-    const registryPath = path.join(modelsDir, entry.name, '.vivipet-registry.json');
-    if (!fs.existsSync(registryPath)) continue;
-
-    try {
-      const registry = JSON.parse(fs.readFileSync(registryPath, 'utf-8'));
-      const id = registry.id || entry.name;
-      const model3File = registry.model3File || `${entry.name}.model3.json`;
-      const rootDir = path.join(modelsDir, entry.name);
-      const model3Path = path.join(rootDir, model3File);
-      const actions = indexModelActions({
-        modelId: id,
-        name: registry.name || entry.name,
-        modelPath: model3Path,
-        rootDir,
-      });
-      models.push({
-        id,
-        name: registry.name || entry.name,
-        path: `vivipet-assets://models/${id}/${model3File}`,
-        window: registry.window,
-        actions: toRendererActions(actions),
-      });
-    } catch (err) {
-      log.warn(`[ModelManager] Failed to read registry: ${registryPath}`, err);
-    }
-  }
-
-  return models;
+  console.warn('[model-manager] listUserModels stubbed — Phase 4 will reimplement for .riv');
+  return [];
 }
 
 export function indexBundledModels(models: BundledModelConfig[]): void {
