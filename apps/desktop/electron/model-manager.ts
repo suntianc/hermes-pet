@@ -246,6 +246,12 @@ export function listUserModels(): Array<{
 
 export function indexBundledModels(models: BundledModelConfig[]): void {
   for (const model of models) {
+    // D-08: Skip .riv models — Rive State Machine handles animation internally
+    if (model.path.endsWith('.riv')) {
+      log.info(`[ModelManager] Skipping SQLite index for Rive model: ${model.id}`);
+      continue;
+    }
+
     const modelPath = resolveBundledModelPath(model.path);
     if (!modelPath) continue;
 
