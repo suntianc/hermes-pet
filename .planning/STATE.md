@@ -1,7 +1,7 @@
 # STATE.md — Hermes DeskPet
 
-**Status:** Phase 2 Complete
-**Current Phase:** Phase 3 — Live2D Cleanup
+**Status:** Phase 3 Complete
+**Current Phase:** Phase 4 — Model System Adaptation
 
 ---
 
@@ -20,10 +20,10 @@ See: `.planning/PROJECT.md` (updated 2026-05-08)
 |-------|--------|-------------|----------|
 | 1 — Rive Rendering Pipeline | ✓ Complete | RIVE-01~07 | 100% |
 | 2 — Animation/Event Integration | ✓ Complete | SYNC-01~05 | 100% |
-| 3 — Live2D Cleanup | ○ Pending | CLEAN-01~07 | 0% |
+| 3 — Live2D Cleanup | ✓ Complete | CLEAN-01~07 | 100% |
 | 4 — Model System Adaptation | ○ Pending | MODEL-01~05 | 0% |
 
-**Overall:** 11/24 requirements complete | 2/4 phases complete
+**Overall:** 18/24 requirements complete | 3/4 phases complete
 
 ---
 
@@ -34,27 +34,26 @@ See: `.planning/PROJECT.md` (updated 2026-05-08)
 - RiveRenderer + multi-canvas PetStage operational
 - model-registry updated with Rive type support
 
-## Current Session
+## Last Session (Phase 3 Executed)
 
-- Phase 2 context gathered: 5 gray areas analyzed, all agent-decided
-- Implementation decisions: idle timer hybrid, PetStore polling lip sync, RiveRenderer lerp smoothing, immediate action interrupt
-- CONTEXT.md written with 17 locked decisions (D-01~D-17)
-
-## Last Session (Phase 2 Executed)
-
-- 2 plans executed across 2 waves, 6 tasks total
-- RiveRenderer.ts: 184→372 lines (+199/-15)
-- SM input caching: stateInput, mouthOpenInput, lookXInput, lookYInput cached in loadModel
-- Idle auto-return: hybrid timer for 5 momentary actions (400ms)
-- TTS lip sync: RMS amplitude → mouth_open via 0.05 clamp + EMA filter
-- Mouse follow: lerp(0.1) smoothing, -1.0~1.0 normalization
-- rAF render loop: updateMouseFollow → updateLipSync at display refresh rate
-- Build: 0 TypeScript errors, full vite build passes
+- 3 plans executed across 2 waves, 8 tasks total
+- 126 Live2D/Cubism files deleted (~56K lines)
+- src/vendor/cubism/ (~200 files) + public/live2dcubismcore.js + public/Framework/ shaders + public/models/ (~50 files) — all removed
+- Live2DRenderer.ts (600 lines) + capability-resolver.ts + PetPerformanceDirector.ts — deleted
+- vite.config.mts + tsconfig.json — @framework alias removed
+- model-registry.ts + PetRenderer.ts — 'live2d' type removed
+- main.tsx — Cubism WASM loading removed
+- App.tsx — PetPerformanceDirector removed, .live2d-container → .rive-container
+- models.json — Live2D entries removed
+- model-manager.ts — extract-zip + .model3.json logic removed, Phase 4 stubs
+- package.json — gsap + extract-zip removed
+- Build: npm run build 0 errors, grep audit zero Live2D references
+- Final project size: -56,010 lines, +1 Rive runtime (9 deps)
 
 ## Next Action
 
 ```
-/gsd-plan-phase 3
+/gsd-discuss-phase 4
 ```
 
 ---
