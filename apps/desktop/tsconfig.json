@@ -15,7 +15,6 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@framework/*": ["src/vendor/cubism/*"],
       "@pet-action-dsl": ["../../packages/pet-action-dsl/src"],
       "@shared": ["../../packages/shared/src"]
     }
