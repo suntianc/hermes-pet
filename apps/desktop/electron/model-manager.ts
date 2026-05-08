@@ -127,31 +127,69 @@ export async function importModelViaDialog(): Promise<{
   actions?: Record<string, RendererActionConfig>;
 } | null> {
   const result = await dialog.showOpenDialog({
-    title: 'Select ViviPet Model Package',
+    title: 'Select Rive Model (.riv)',
     properties: ['openFile'],
-    filters: [{ name: 'ViviPet Model Package (.zip)', extensions: ['zip'] }],
+    filters: [{ name: 'Rive Model (.riv)', extensions: ['riv'] }],
   });
 
   if (result.canceled || result.filePaths.length === 0) {
     return null;
   }
 
-  return importModelZip(result.filePaths[0]);
+  return importRiveModel(result.filePaths[0]);
 }
 
 /**
- * Import a model from a .zip package.
- * Currently stubbed — .riv model import will be implemented in Phase 4.
+ * Import a model from a .riv file.
+ * Copies the single .riv file into userData/models/<modelId>/ and
+ * writes a .vivipet-registry.json for discovery by listUserModels().
+ * Returns the imported model's config, or null on error.
  */
-async function importModelZip(_zipPath: string): Promise<{
+async function importRiveModel(rivFilePath: string): Promise<{
   id: string;
   name: string;
   path: string;
   window?: { width: number; height: number };
   actions?: Record<string, RendererActionConfig>;
 } | null> {
-  console.warn('[model-manager] .zip import not yet supported for .riv models (Phase 4)');
-  return null;
+  try {
+    const fileName = path.basename(rivFilePath, '.riv');
+    const modelId = toModelId(fileName);
+    const displayName = fileName;
+    const modelDir = path.join(app.getPath('userData'), USER_MODELS_DIR, modelId);
+
+    // 1. Create target directory
+    fs.mkdirSync(modelDir, { recursive: true });
+
+    // 2. Copy .riv file
+    const destPath = path.join(modelDir, 'model.riv');
+    fs.copyFileSync(rivFilePath, destPath);
+
+    // 3. Write .vivipet-registry.json
+    const registry = {
+      id: modelId,
+      name: displayName,
+      path: `vivipet-assets://models/${modelId}/model.riv`,
+      type: 'rive' as const,
+      window: { width: 520, height: 760 },
+    };
+    fs.writeFileSync(
+      path.join(modelDir, '.vivipet-registry.json'),
+      JSON.stringify(registry, null, 2),
+    );
+
+    log.info(`[ModelManager] Imported Rive model: ${modelId} from ${rivFilePath}`);
+
+    return {
+      id: registry.id,
+      name: registry.name,
+      path: registry.path,
+      window: registry.window,
+    };
+  } catch (err) {
+    log.error(`[ModelManager] Failed to import Rive model from ${rivFilePath}`, err);
+    return null;
+  }
 }
 
 /**
