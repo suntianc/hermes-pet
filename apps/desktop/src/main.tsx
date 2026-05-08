@@ -18,25 +18,7 @@ window.addEventListener('unhandledrejection', (e) => {
   if (errDiv) errDiv.textContent = (errDiv.textContent ? errDiv.textContent + '\n---\n' : '') + '[PROMISE] ' + msg;
 });
 
-function loadScript(src: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`);
-    if (existing) {
-      resolve();
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = src;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
-    document.head.appendChild(script);
-  });
-}
-
 async function bootstrap(): Promise<void> {
-  await loadScript('./live2dcubismcore.js');
-
   const baseUrl = window.location.href;
   if (baseUrl.startsWith('http')) {
     console.log('[Rive] Using auto WASM (dev mode)');
