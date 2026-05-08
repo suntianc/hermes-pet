@@ -3,7 +3,6 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import log from 'electron-log';
-import extractZip from 'extract-zip';
 import { indexModelActions, IndexedModelAction } from './action-index';
 
 const USER_MODELS_DIR = 'models';
@@ -111,83 +110,8 @@ function findFiles(dir: string, predicate: (filePath: string) => boolean): strin
   return result;
 }
 
-function findPackagedModel3(rootDir: string): string {
-  const model3Files = findFiles(rootDir, (filePath) => filePath.endsWith('.model3.json'));
-  if (model3Files.length === 0) {
-    throw new Error('No .model3.json file found in the model package');
-  }
-  if (model3Files.length > 1) {
-    throw new Error(`Expected exactly one .model3.json file, found ${model3Files.length}`);
-  }
-  return model3Files[0];
-}
-
-function validateModelPackage(model3Path: string): void {
-  const info = parseModel3References(model3Path);
-  const missingFiles = info.files.filter((relFile) => !fs.existsSync(path.join(info.dir, relFile)));
-  if (missingFiles.length > 0) {
-    throw new Error(`Missing referenced model files: ${missingFiles.join(', ')}`);
-  }
-
-  const motionDir = path.join(info.dir, 'motion');
-  if (!fs.existsSync(motionDir) || !fs.statSync(motionDir).isDirectory()) {
-    throw new Error('Model package must include a motion/ directory');
-  }
-
-  const idleMotion = path.join(motionDir, 'idle.motion3.json');
-  if (!fs.existsSync(idleMotion)) {
-    throw new Error('Model package must include motion/idle.motion3.json');
-  }
-}
-
 function toModelId(name: string): string {
   return name.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase() || 'imported_model';
-}
-
-/**
- * Parse a model3.json to find all referenced files relative to it.
- */
-function parseModel3References(model3Path: string): {
-  dir: string;
-  modelId: string;
-  files: string[];
-  windowSize?: { width: number; height: number };
-} {
-  const raw = JSON.parse(fs.readFileSync(model3Path, 'utf-8'));
-  const dir = path.dirname(model3Path);
-  const files: string[] = [];
-  const refs = raw.FileReferences || {};
-
-  // Collect all referenced files
-  if (refs.Moc) files.push(refs.Moc);
-  if (refs.Physics) files.push(refs.Physics);
-  if (refs.Textures) {
-    for (const tex of refs.Textures) files.push(tex);
-  }
-  if (refs.Expressions) {
-    for (const expr of refs.Expressions) {
-      if (expr.File) files.push(expr.File);
-    }
-  }
-  if (refs.Motions) {
-    for (const group of Object.values(refs.Motions) as Array<Array<{ File?: string }>>) {
-      for (const motion of group) {
-        if (motion.File) files.push(motion.File);
-      }
-    }
-  }
-
-  // Derive a model ID from the directory name
-  const dirName = path.basename(dir);
-  const modelId = toModelId(dirName);
-
-  // Try to extract canvas size from model3.json layout
-  let windowSize: { width: number; height: number } | undefined;
-  if (raw.Metrics) {
-    windowSize = { width: raw.Metrics.Width || 500, height: raw.Metrics.Height || 500 };
-  }
-
-  return { dir, modelId, files, windowSize };
 }
 
 /**
@@ -215,107 +139,19 @@ export async function importModelViaDialog(): Promise<{
   return importModelZip(result.filePaths[0]);
 }
 
-async function importModelZip(zipPath: string): Promise<{
-  id: string;
-  name: string;
-  path: string;
-  window?: { width: number; height: number };
-  actions?: Record<string, RendererActionConfig>;
-} | null> {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vivipet-model-'));
-
-  try {
-    await extractZip(zipPath, { dir: tempDir });
-    const model3Path = findPackagedModel3(tempDir);
-    validateModelPackage(model3Path);
-    const packageRoot = path.dirname(model3Path);
-    const modelIdHint = packageRoot === tempDir
-      ? toModelId(path.basename(zipPath, path.extname(zipPath)))
-      : undefined;
-    return importModelFromPath(model3Path, zipPath, modelIdHint);
-  } catch (err) {
-    log.error(`[ModelManager] Failed to import model package: ${err}`);
-    return null;
-  } finally {
-    fs.rmSync(tempDir, { recursive: true, force: true });
-  }
-}
-
 /**
- * Import a model from a selected model3.json path.
- * Copies all model files into userData/models/<modelId>/.
+ * Import a model from a .zip package.
+ * Currently stubbed — .riv model import will be implemented in Phase 4.
  */
-async function importModelFromPath(model3Path: string, sourcePath = model3Path, modelIdHint?: string): Promise<{
+async function importModelZip(_zipPath: string): Promise<{
   id: string;
   name: string;
   path: string;
   window?: { width: number; height: number };
   actions?: Record<string, RendererActionConfig>;
 } | null> {
-  try {
-    const info = parseModel3References(model3Path);
-    if (modelIdHint) {
-      info.modelId = modelIdHint;
-    }
-
-    // Create target directory
-    const targetDir = resolveUserModelPath(info.modelId);
-    fs.rmSync(targetDir, { recursive: true, force: true });
-    fs.mkdirSync(targetDir, { recursive: true });
-
-    // Copy model3.json and all referenced files
-    const model3Dest = path.join(targetDir, path.basename(model3Path));
-    fs.copyFileSync(model3Path, model3Dest);
-
-    for (const relFile of info.files) {
-      const srcFile = path.join(info.dir, relFile);
-      const destFile = path.join(targetDir, relFile);
-      const destParent = path.dirname(destFile);
-      if (!fs.existsSync(destParent)) {
-        fs.mkdirSync(destParent, { recursive: true });
-      }
-      if (fs.existsSync(srcFile)) {
-        fs.copyFileSync(srcFile, destFile);
-      } else {
-        log.warn(`[ModelManager] Referenced file not found: ${srcFile}`);
-      }
-    }
-
-    // ViviPet model package convention: every custom action lives under motion/.
-    // Copy the whole folder so unreferenced motion files can still be indexed and played.
-    copyDirectoryIfExists(path.join(info.dir, 'motion'), path.join(targetDir, 'motion'));
-    copyDirectoryIfExists(path.join(info.dir, 'expression'), path.join(targetDir, 'expression'));
-
-    // Write registry metadata
-    const registry = {
-      id: info.modelId,
-      name: info.modelId,
-      sourcePath,
-      importedAt: new Date().toISOString(),
-      model3File: path.basename(model3Path),
-      window: info.windowSize,
-    };
-    fs.writeFileSync(path.join(targetDir, '.vivipet-registry.json'), JSON.stringify(registry, null, 2));
-
-    const actions = indexModelActions({
-      modelId: info.modelId,
-      name: info.modelId,
-      modelPath: model3Dest,
-      rootDir: targetDir,
-    });
-
-    log.info(`[ModelManager] Model imported: ${info.modelId} → ${targetDir}`);
-    return {
-      id: info.modelId,
-      name: info.modelId,
-      path: `vivipet-assets://models/${info.modelId}/${path.basename(model3Path)}`,
-      window: info.windowSize,
-      actions: toRendererActions(actions),
-    };
-  } catch (err) {
-    log.error(`[ModelManager] Failed to import model: ${err}`);
-    return null;
-  }
+  console.warn('[model-manager] .zip import not yet supported for .riv models (Phase 4)');
+  return null;
 }
 
 /**
