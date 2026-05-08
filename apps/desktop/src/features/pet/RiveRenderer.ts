@@ -63,10 +63,11 @@ export class RiveRenderer implements PetRenderer {
       stateMachines: smName,
       onLoad: () => {
         charRive.resizeToCanvas();
+        console.log('[RiveRenderer] Model loaded, caching SM inputs...');
         this.cacheInputs(charRive, smName);
-        // 初始化 state 为 idle(0)
         if (this.stateInput) {
           this.stateInput.value = 0;
+          console.log('[RiveRenderer] Initial state → idle(0)');
         }
       },
     });
@@ -168,9 +169,11 @@ export class RiveRenderer implements PetRenderer {
 
   destroy(): void {
     this.disposed = true;
+    this.clearIdleTimer();
     this.cleanupInstances();
     this.mainCanvas = null;
     this.bgCanvas = null;
+    console.log('[RiveRenderer] Destroyed');
   }
 
   /** D-04: 公开 scheduleIdle 供外部调用覆盖默认定时 */
