@@ -27,12 +27,18 @@
 
 **Requirements:** SYNC-01, SYNC-02, SYNC-03, SYNC-04, SYNC-05
 
+**Plans:** 2 plans in 2 waves
+
 **Success Criteria:**
 1. Agent 事件（thinking/speaking/happy/error 等）正确映射到 Rive State Machine 的 `state` 输入
 2. TTS 播报时 `mouth_open` 输入跟随 RMS 振幅变化，嘴型动画同步
 3. 鼠标跟随下 `look_x`/`look_y` 输入平滑更新
 4. 瞬间动作（如 error）播完后自动回到 idle
 5. 新动作能打断当前动画（interrupt 逻辑）
+
+**Plans:**
+- [ ] 02-01-PLAN.md — SM 输入缓存 + 动作中断 + Idle 自动返回 (SYNC-01, SYNC-04, SYNC-05)
+- [ ] 02-02-PLAN.md — TTS 嘴型同步 + 鼠标跟随平滑 (SYNC-02, SYNC-03)
 
 ---
 

@@ -38,11 +38,12 @@ created: 2026-05-08
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 2-01-01 | 01 | 1 | SYNC-01 | — | N/A (animation only) | manual | `npm run build` | ❌ | ⬜ pending |
-| 2-01-02 | 01 | 1 | SYNC-04 | — | N/A | manual | `npm run build` | ❌ | ⬜ pending |
-| 2-01-03 | 01 | 1 | SYNC-05 | — | N/A | manual | `npm run build` | ❌ | ⬜ pending |
-| 2-01-04 | 01 | 1 | SYNC-02 | — | N/A | manual | `npm run build` | ❌ | ⬜ pending |
-| 2-01-05 | 01 | 1 | SYNC-03 | — | N/A | manual | `npm run build` | ❌ | ⬜ pending |
+| 2-01-01 | 01 | 1 | SYNC-01 | — | N/A (animation only) | grep+tsc | `npm run build` | ❌ | ⬜ pending |
+| 2-01-02 | 01 | 1 | SYNC-01, SYNC-04, SYNC-05 | — | N/A | grep+tsc | `npm run build` | ❌ | ⬜ pending |
+| 2-01-03 | 01 | 1 | D-17 | — | N/A | grep+tsc | `npm run build` | ❌ | ⬜ pending |
+| 2-02-01 | 02 | 2 | SYNC-02 | — | N/A | grep+tsc | `npm run build` | ❌ | ⬜ pending |
+| 2-02-02 | 02 | 2 | SYNC-03 | — | N/A | grep+tsc | `npm run build` | ❌ | ⬜ pending |
+| 2-02-03 | 02 | 2 | SYNC-02, SYNC-03 | — | N/A | grep+tsc | `npm run build` | ❌ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
