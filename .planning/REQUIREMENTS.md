@@ -87,7 +87,7 @@
 | FND-03 | Phase 1 | Pending |
 | FND-04 | Phase 1 | Pending |
 | FND-05 | Phase 1 | Pending |
-| FND-06 | Phase 7 | Pending |
+| FND-06 | Phase 1 | Pending |
 | TTS-01 | Phase 2 | Pending |
 | TTS-02 | Phase 2 | Pending |
 | TTS-03 | Phase 2 | Pending |
@@ -95,10 +95,10 @@
 | TTS-05 | Phase 2 | Pending |
 | ADP-01 | Phase 3 | Pending |
 | ADP-02 | Phase 3 | Pending |
-| AI-01 | Phase 5 | Pending |
-| AI-02 | Phase 5 | Pending |
 | MOD-01 | Phase 4 | Pending |
 | MOD-02 | Phase 4 | Pending |
+| AI-01 | Phase 5 | Pending |
+| AI-02 | Phase 5 | Pending |
 | IPC-01 | Phase 6 | Pending |
 | IPC-02 | Phase 6 | Pending |
 | IPC-03 | Phase 6 | Pending |
@@ -106,7 +106,7 @@
 | DST-02 | Phase 7 | Pending |
 | DST-03 | Phase 7 | Pending |
 | DST-04 | Phase 7 | Pending |
-| CLN-01 | Phase 7 | Pending |
+| CLN-01 | Phase 8 | Pending |
 
 **Coverage:**
 - v1 requirements: 25 total
