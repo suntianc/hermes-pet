@@ -2,7 +2,7 @@
 
 ## What This Is
 
-一款 AI 驱动的桌面宠物伴侣应用，运行在 macOS/Windows/Linux 上。宠物会根据 AI Agent 的工作状态做出实时反应（思考时沉思、编码时敲键盘、成功时开心等），并通过 TTS 语音或文字气泡与用户交流。当前使用 Live2D Cubism 5 渲染，正在迁移到 Rive 引擎。
+一款 AI 驱动的桌面宠物伴侣应用，运行在 macOS/Windows/Linux 上。宠物会根据 AI Agent 的工作状态做出实时反应（思考时沉思、编码时敲键盘、成功时开心等），并通过 TTS 语音或文字气泡与用户交流。使用 Rive 引擎渲染，Tauri 2 + Rust 为桌面后端框架。
 
 ## Core Value
 
@@ -12,71 +12,91 @@
 
 ### Validated
 
-从现有代码库推导的能力：
+从已完成 Milestone 1（Live2D → Rive 迁移）交付的能力：
 
-- ✓ **Electron 双进程架构** — 安全沙箱化的主进程+渲染器分离
-- ✓ **Live2D Cubism 5 渲染** — WebGL 加载 .moc3 模型、纹理、物理、动作播放
-- ✓ **TTS 语音播报** — 三提供商（macOS say / 本地服务 / 云端 API），队列管理，流式播放
-- ✓ **Text-to-Speech 管道** — 长文本分段、IPC 音频块传输、Web Audio API 播放、RMS 振幅分析
-- ✓ **AI 行为规划器** — OpenAI function calling 驱动(rule/ai/hybrid 三模式)
-- ✓ **HTTP Adapter** — 端口 18765 接受外部 Agent 事件（支持 Hermes Agent 集成）
-- ✓ **事件驱动行为系统** — Agent phase → 宠物动作映射、会话管理、事件聚合
-- ✓ **系统托盘菜单** — 显示/隐藏、尺寸调节、鼠标穿透/跟随、模型切换、TTS 配置
-- ✓ **Speech Bubble** — 文字气泡显示（计时/tts-sync 两种模式）
-- ✓ **模型管理系统** — .zip 导入、SQLite 动作索引、vivipet-assets:// 自定义协议
-- ✓ **AI Planner 设置面板** — 渲染器端的 AI 配置 UI
-- ✓ **鼠标交互** — 点击、双击、拖拽、鼠标跟随
+- ✓ **Rive 渲染管线** — RiveRenderer + 多 canvas 架构，@rive-app/canvas 驱动
+- ✓ **状态机驱动动画** — 10 种动作状态（idle/thinking/speaking/happy/error/searching/coding/terminal/confused/angry）
+- ✓ **TTS 唇形同步** — mouth_open 数值输入驱动嘴部动画，RMS 振幅平滑 + 迟滞削波
+- ✓ **鼠标跟随** — look_x/look_y 数值输入，50ms 轮询
+- ✓ **空闲自动返回** — 瞬间动作 400ms 后自动回到 idle
+- ✓ **TTS 引擎** — 三提供商（system/local/cloud），队列管理，长文本分段
+- ✓ **StreamingAudioPlayer** — Web Audio API 播放，实时 RMS 振幅分析
+- ✓ **HTTP Adapter** — 端口 18765 接受外部 Agent 事件
+- ✓ **AI 行为规划器** — OpenAI function calling（rule/ai/hybrid 三模式）
+- ✓ **事件驱动行为系统** — Agent phase → 宠物动作映射
+- ✓ **Speech Bubble** — 文字气泡（计时/tts-sync 两种模式）
+- ✓ **系统托盘** — 显示/隐藏、尺寸、鼠标穿透/跟随、模型切换、TTS 配置
+- ✓ **模型管理系统** — .riv 导入/扫描、用户模型合并
+- ✓ **窗口管理** — 无边框透明置顶，右下角锚定
 
 ### Active
 
-- [ ] **RIVE-01**: 移除所有 Live2D 相关代码（Cubism SDK WASM、Framework 源码、Shader 文件、模型文件）
-- [ ] **RIVE-02**: 集成 Rive 渲染引擎（@rive-app/canvas 或 @rive-app/webgl）
-- [ ] **RIVE-03**: 创建 RiveRenderer 替代 Live2DRenderer，实现 PetRenderer 接口
-- [ ] **RIVE-04**: 重构 PetStage 渲染生命周期（加载 .riv → 播放 Animation → 状态机驱动）
-- [ ] **RIVE-05**: 支持 Rive State Machine 标准状态切换（idle/thinking/speaking/happy/error 等）
-- [ ] **RIVE-06**: TTS 嘴型同步适配（动画触发参数映射）
-- [ ] **RIVE-07**: 模型导入系统适配 .riv 文件（替代 .zip/.moc3 导入流程）
-- [ ] **RIVE-08**: 移除模型动作索引 SQLite 模块（Rive 动画自动包含在 .riv 中）
-- [ ] **RIVE-09**: 提供 Rive 集成 API 和示例代码，支持后续自定义 .riv 文件接入
+目标: Electron → Tauri 2 + Rust 全线迁移。所有 backend 逻辑从 Node.js/Electron 重写为 Rust/Tauri commands。
+
+- [ ] **TAURI-01**: 初始化 Tauri 2 项目，配置跨平台构建（macOS/Win/Linux）
+- [ ] **TAURI-02**: 窗口管理迁移（无边框透明、置顶、锚定右下角、拖拽/缩放）
+- [ ] **TAURI-03**: Rust backend 重写：TTS 引擎（system/local/cloud 三 provider）
+- [ ] **TAURI-04**: Rust backend 重写：HTTP Adapter（端口 18765，axum/actix-web）
+- [ ] **TAURI-05**: Rust backend 重写：AI Planner（OpenAI API via reqwest）
+- [ ] **TAURI-06**: Rust backend 重写：系统托盘（tauri-plugin-system-tray）
+- [ ] **TAURI-07**: Rust backend 重写：模型管理（导入、扫描、注册，tauri-plugin-fs）
+- [ ] **TAURI-08**: 前端 IPC 适配：所有 window.electronAPI → @tauri-apps/api invoke/events
+- [ ] **TAURI-09**: TTS 音频流传输适配（Rust streaming → Web Audio API）
+- [ ] **TAURI-10**: 日志系统：Rust tracing 替代 electron-log
+- [ ] **TAURI-11**: 自动更新：tauri-plugin-updater 替代 electron-updater
+- [ ] **TAURI-12**: 跨平台构建验证（macOS .dmg + Windows .msi + Linux .AppImage）
+- [ ] **TAURI-13**: 深度系统监控基础设施（Rust sysinfo 或类似 crate，具体指标后续确定）
+- [ ] **TAURI-14**: 移除全部 Electron/Node.js 依赖和代码
 
 ### Out of Scope
 
 - **多角色同屏** — 当前只显示一个宠物角色
-- **Web 版本** — Electron 桌面应用，不计划 Web 部署
+- **Web 版本** — 桌面应用，不计划 Web 部署
 - **移动端** — 不计划 iOS/Android 版本
 - **实时语音对话** — TTS 为单向播报，不包含语音识别和对话轮次管理
+- **AI Agent 业务逻辑** — 迁移的是框架，业务监控指标在迁移后规划
 
 ## Context
 
-代码库是一个已可运行的 Electron 41 应用，使用 React 19 + Vite 5 + TypeScript 5.5。当前渲染引擎为 Live2D Cubism 5（WebGL），相关代码分布在：
+当前项目为一个可运行的 Electron 41 + React 19 + Vite 5 + TypeScript 5.5 应用。Milestone 1 已完成 Live2D → Rive 迁移，渲染层（RiveRenderer + PetStage + StreamingAudioPlayer + SpeechBubble + PetStore）为纯前端代码，在 WebView 中运行，Tauri 迁移后无需改动。
 
-- `src/vendor/cubism/` — 约 200+ 文件的 Cubism 5 Framework SDK
-- `public/live2dcubismcore.js` — Cubism Core WASM
-- `public/Framework/Shaders/WebGL/` — WebGL shader 文件
-- `public/models/` — 内建 Live2D 模型文件（.model3.json, .moc3, motion 文件）
-- `src/features/pet/Live2DRenderer.ts` — Cubism 5 WebGL 渲染器实现
-- `src/features/pet/PetRenderer.ts` — 渲染器抽象接口
-- `src/features/pet/capability-resolver.ts` — 动作命名→动画组映射
-- `electron/action-index.ts` — SQLite 动作索引
-- `electron/model-manager.ts` — 模型导入和协议处理
+所有 Electron 主进程代码（`electron/` 目录约 15 个文件）需要重写为 Rust，包括：
 
-Rive 替换后，上述文件将大幅减少或移除，渲染层由 Rive 的运行时接管。
+| 当前模块 | Rust 替代 |
+|---------|-----------|
+| electron/ipc.ts | Tauri commands + @tauri-apps/api invoke |
+| electron/preload.ts | 删除（Tauri 无需 preload） |
+| electron/window.ts | tauri.conf.json 配置 + Rust 窗口 API |
+| electron/tray.ts | tauri-plugin-system-tray |
+| electron/main.ts | Tauri setup 入口 |
+| electron/tts/tts-manager.ts | Rust TTS module + std::process::Command |
+| electron/tts/streamers/*.ts | Rust + reqwest 直调云端 TTS API |
+| electron/adapter/server.ts | Rust axum HTTP server |
+| electron/ai-planner.ts | Rust reqwest → OpenAI API |
+| electron/model-manager.ts | Rust + tauri-plugin-fs + tauri dialog |
+| electron/app-state.ts | Rust 全局状态 |
+| electron/action-index.ts | Rust 文件/目录扫描 |
 
 ## Constraints
 
-- **Electron 41**: 渲染器运行在 Chromium 沙箱中，Rive 运行时需兼容
-- **macOS primary**: 开发环境为 macOS，需确保 Windows/Linux 编译
-- **Rive 运行时**: 使用 `@rive-app/canvas`（轻量级，适用于 2D 矢量动画），需要评估 WebGL 兼容性
-- **性能**: 宠物动画需保持 60fps，Rive 渲染开销需低于 Live2D Cubism
+- **跨平台**: Tauri 2 的跨平台构建链（macOS arm64 + x64 / Windows / Linux）
+- **Rust 工具链**: 项目中需要引入 Cargo.toml、rust-toolchain.toml 等 Rust 配置
+- **Rive 渲染**: 保持 @rive-app/canvas 方案不变，WebView 中的 Rive + React + Vite + TypeScript 全量保留
+- **TTS 跨平台**: system provider 需要对各平台实现不同方案（macOS say / Windows SAPI / Linux speech-dispatcher 或 espeak）
+- **性能**: 保持 60fps 动画，Rust 开销低于当前 Node.js 主进程
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| 放弃 Live2D 转向 Rive | 更轻量的运行时、矢量动画、状态机原生支持、简化代码库 | — Pending |
-| 标准状态驱动动画 | 与现有事件系统兼容，从 agent phase 直接映射到 Rive state machine | — Pending |
-| Rive .riv 文件由用户提供 | 建好集成架构后用户自定义动画资源 | — Pending |
-| 保留所有现有功能 | 只替换渲染引擎，行为逻辑/AI/TTS/Adapter 不动 | — Pending |
+| 放弃 Electron 转向 Tauri 2 + Rust | 更低内存占用，深度系统监控能力，跨平台一致性 | — Pending |
+| 全部 Rust 替代 Node.js | 零 Node.js 依赖，纯净 Rust 后端 | ✓ 决定 |
+| TTS Rust 重写（跨平台实现） | 彻底告别系统命令依赖，各平台原生调用 | ✓ 决定 |
+| AI Planner 迁至 Rust (reqwest) | 统一后端技术栈，避免双语言维护 | ✓ 决定 |
+| 日志 tracing 替代 electron-log | Rust 生态标准方案 | ✓ 决定 |
+| 渲染层（Rive/React）保持不动 | 纯 WebView 代码，Tauri 兼容 | ✓ 决定 |
+| 深度监控在迁移后规划具体指标 | 先搭框架，后定具体监控项 | ✓ 决定 |
+| 跨平台目标（macOS/Win/Linux） | 扩大用户覆盖 | ✓ 决定 |
 
 ## Evolution
 
@@ -96,4 +116,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-08 after initialization*
+*Last updated: 2026-05-09 after Milestone 2 initialization*
