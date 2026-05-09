@@ -38,10 +38,14 @@ export interface BehaviorProp {
 export interface BehaviorPlan {
   pose: BehaviorPose;
   playback: 'hold' | 'momentary';
+  shouldAct?: boolean;
   expression?: BehaviorExpression;
   speech?: BehaviorSpeech;
   props?: BehaviorProp[];
+  intensity?: number;
+  interrupt?: boolean;
   durationMs?: number;
+  reason?: string;
 }
 
 function speechText(event: PetStateEvent): string | undefined {
@@ -53,7 +57,7 @@ function expressionForEvent(event: PetStateEvent, pose: string): BehaviorExpress
   const kind = event.source?.kind?.toLowerCase();
 
   if (pose === 'error' || phase === 'tool:error') return 'worried';
-  if (pose === 'success' || pose === 'happy' || phase === 'task:done') return 'happy';
+  if (pose === 'success' || pose === 'happy' || phase === 'task:done' || phase === 'session:end') return 'happy';
   if (pose === 'terminal' || kind === 'bash' || kind === 'shell' || kind === 'zsh') return 'focused';
   if (pose === 'reading' || pose === 'coding' || pose === 'testing') return 'focused';
   if (pose === 'waiting_user') return 'confused';
@@ -71,11 +75,15 @@ function propsForEvent(event: PetStateEvent, pose: string): BehaviorProp[] | und
 
 export function composeBehaviorPlan(event: PetStateEvent, visiblePose: string): BehaviorPlan {
   const text = speechText(event);
+  const pose = event.mode === 'momentary' ? event.action : visiblePose;
   return {
-    pose: visiblePose,
+    pose,
     playback: event.mode === 'momentary' ? 'momentary' : 'hold',
-    expression: expressionForEvent(event, visiblePose),
-    props: propsForEvent(event, visiblePose),
+    shouldAct: true,
+    expression: expressionForEvent(event, pose),
+    props: propsForEvent(event, pose),
+    intensity: event.mode === 'momentary' ? 0.75 : 0.55,
+    interrupt: event.mode === 'momentary',
     durationMs: event.resetAfterMs,
     speech: text ? { text, tts: event.tts } : undefined,
   };
@@ -85,6 +93,9 @@ export function composeRuntimePlan(visiblePose: string): BehaviorPlan {
   return {
     pose: visiblePose,
     playback: 'hold',
+    shouldAct: true,
+    intensity: 0.45,
+    interrupt: false,
     expression: visiblePose === 'idle' ? 'neutral' : undefined,
   };
 }

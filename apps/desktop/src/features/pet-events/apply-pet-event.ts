@@ -1,6 +1,6 @@
 import { ActionType } from '../actions/action-schema';
 import { BehaviorContextManager } from './behavior-context';
-import { BehaviorProp, composeRuntimePlan } from './behavior-plan';
+import { BehaviorPlan, BehaviorProp, composeRuntimePlan } from './behavior-plan';
 import { BehaviorPlanner } from './behavior-planner';
 import { PetStateEvent, PetTTSOptions } from './pet-event-schema';
 import { PetSessionManager } from './pet-session-manager';
@@ -14,6 +14,7 @@ interface PetEventControls {
   setAction: (action: ActionType) => void;
   setExpression: (expression: string | null) => void;
   setProps: (props: BehaviorProp[]) => void;
+  setPerformanceHint?: (plan: BehaviorPlan | null) => void;
   scheduleIdle: (delay: number, afterIdle?: () => void) => void;
   scheduleRuntimeRefresh: (delay?: number) => void;
   handleSpeech: (text: string, ttsOpts?: boolean | PetTTSOptions) => void;
@@ -30,6 +31,12 @@ export async function applyPetStateEvent(event: PetStateEvent, controls: PetEven
   const context = controls.contextManager.snapshot(controls.sessionManager.snapshot());
   const plan = await controls.planner.plan(event, context);
   controls.contextManager.record(event, plan);
+  controls.setPerformanceHint?.(plan);
+  controls.scheduleRuntimeRefresh(result.nextExpiryDelay);
+
+  if (plan.shouldAct === false) {
+    return;
+  }
 
   if (event.mode === 'context') {
     // Context updates keep the current pose stable. They may refresh TTL or speech,
@@ -41,11 +48,15 @@ export async function applyPetStateEvent(event: PetStateEvent, controls: PetEven
     }
   } else {
     controls.clearActionResetTimer();
-    controls.setAction(plan.pose);
+    const canInterrupt = plan.interrupt !== false || controls.currentAction === 'idle';
+    if (canInterrupt) {
+      controls.setAction(plan.pose);
+    }
     if (event.resetAfterMs !== undefined) {
       controls.scheduleIdle(event.resetAfterMs, () => {
         const refreshed = controls.sessionManager.refresh();
         const refreshedPlan = composeRuntimePlan(refreshed.action);
+        controls.setPerformanceHint?.(refreshedPlan);
         controls.setAction(refreshedPlan.pose);
         if (refreshedPlan.expression !== undefined) {
           controls.setExpression(refreshedPlan.expression);
@@ -60,8 +71,6 @@ export async function applyPetStateEvent(event: PetStateEvent, controls: PetEven
     controls.setExpression(plan.expression);
   }
   controls.setProps(plan.props ?? []);
-
-  controls.scheduleRuntimeRefresh(result.nextExpiryDelay);
 
   if (plan.speech?.text) {
     controls.handleSpeech(plan.speech.text, plan.speech.tts);

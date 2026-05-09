@@ -4,6 +4,13 @@
 # path to vivipet_adapter_hook.py when copying into ~/.hermes/config.yaml.
 # Enable hooks_auto_accept: true in ~/.hermes/config.yaml if you want Hermes to
 # auto accept these local hooks.
+#
+# Environment variables (optional):
+#   VIVIPET_ADAPTER_URL        default: http://127.0.0.1:18765/adapter
+#   VIVIPET_HOOK_AGENT         default: hermes
+#   VIVIPET_HOOK_SESSION_TTL   default: 45000
+#   VIVIPET_TTS_ON_MESSAGE     default: 0 — set to 1 to enable spoken responses
+#   VIVIPET_TTS_ON_SESSION_END default: 0 — set to 1 to announce session done
 
 hooks:
   on_session_start:
@@ -27,9 +34,5 @@ hooks:
       timeout: 5
 
   on_session_end:
-    - command: "python3 source/example/hermes/vivipet_adapter_hook.py"
-      timeout: 5
-
-  on_session_finalize:
     - command: "python3 source/example/hermes/vivipet_adapter_hook.py"
       timeout: 5

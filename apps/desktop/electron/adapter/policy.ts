@@ -5,10 +5,18 @@ const TOOL_ACTIONS: Record<string, string> = {
   searching: 'searching',
   read: 'reading',
   reading: 'reading',
+  code: 'coding',
+  coding: 'coding',
+  edit: 'coding',
+  patch: 'coding',
   terminal: 'terminal',
   shell: 'terminal',
   bash: 'terminal',
   zsh: 'terminal',
+  exec: 'terminal',
+  command: 'terminal',
+  test: 'testing',
+  testing: 'testing',
 };
 
 const DIRECT_ACTIONS = new Set([
@@ -23,6 +31,8 @@ const DIRECT_ACTIONS = new Set([
   'reading',
   'coding',
   'terminal',
+  'testing',
+  'waiting_user',
   'success',
   'error',
   'sleep',
@@ -86,7 +96,7 @@ export function toPetStateEvent(event: AgentEvent): PetStateEvent | null {
     case 'message':
       return baseEvent(event, 'speaking', 'continuous');
     case 'tool:start': {
-      const action = event.kind ? TOOL_ACTIONS[event.kind] || 'coding' : 'coding';
+      const action = event.kind ? TOOL_ACTIONS[event.kind] || 'thinking' : 'thinking';
       return baseEvent(event, action, 'continuous');
     }
     case 'tool:success': {

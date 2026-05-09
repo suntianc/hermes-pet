@@ -61,6 +61,8 @@ function capabilities(): AdapterCapabilities {
         'reading',
         'coding',
         'terminal',
+        'testing',
+        'waiting_user',
         'success',
         'error',
         'happy',
