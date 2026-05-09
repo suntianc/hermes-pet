@@ -1,96 +1,118 @@
-# Requirements: Hermes DeskPet (ViviPet)
+# Requirements: Hermes DeskPet — Milestone 2
 
-**Defined:** 2026-05-08
+**Defined:** 2026-05-09
 **Core Value:** 宠物通过生动的动画和语音反馈，让用户感知 AI Agent 的实时工作状态
 
 ## v1 Requirements
 
-### RIVE — Rive Rendering Pipeline
+### Foundation (Tauri 2 Scaffold + Infrastructure)
 
-- [ ] **RIVE-01**: Renderer can load and display `.riv` file on HTML canvas
-- [ ] **RIVE-02**: Renderer implements PetRenderer interface (loadModel, playAction, setSpeaking, lookAt, resize, dispose)
-- [ ] **RIVE-03**: Rive State Machine responds to `state` input changes (idle/thinking/speaking/happy/error etc.)
-- [ ] **RIVE-04**: Canvas lifecycle managed in PetStage: create → load → render loop → resize → dispose
-- [ ] **RIVE-05**: Skinny render loop with requestAnimationFrame drives Rive rendering
-- [ ] **RIVE-06**: Multiple `.riv` model switching works (modelIndex change in App.tsx)
-- [ ] **RIVE-07**: WASM preloaded at app startup for instant Rive loading
+- [ ] **FND-01**: Tauri 2 项目初始化，配置 Cargo.toml、tauri.conf.json、capabilities
+- [ ] **FND-02**: 窗口管理：无边框透明置顶窗口，右下角锚定，拖拽/缩放
+- [ ] **FND-03**: 系统托盘：显示/隐藏、尺寸切换、鼠标穿透、TTS 开关、模型/退出
+- [ ] **FND-04**: 日志系统：Rust tracing 替代 electron-log，写入文件
+- [ ] **FND-05**: 单实例锁：防止多个应用实例同时运行
+- [ ] **FND-06**: CI/CD 搭建：GitHub Actions 跨平台构建 (macOS/Win/Linux)
 
-### SYNC — Animation/Event Integration
+### TTS Engine
 
-- [ ] **SYNC-01**: Event system actions map to State Machine inputs (thinking → 'thinking' state)
-- [ ] **SYNC-02**: TTS lip sync: RMS amplitude → `mouth_open` input (0.0–1.0)
-- [ ] **SYNC-03**: Mouse following: `look_x` / `look_y` inputs from cursor position
-- [ ] **SYNC-04**: Idle auto-return: after momentary action, State Machine returns to idle
-- [ ] **SYNC-05**: Action interruption works (new action overrides current animation)
+- [ ] **TTS-01**: system provider：macOS AVSpeechSynthesizer / Windows SAPI / Linux espeak-ng
+- [ ] **TTS-02**: local provider：HTTP 流式 TTS 服务对接（复用现有字段映射 Text/Voice/Model/Instruct）
+- [ ] **TTS-03**: cloud provider：OpenAI / ElevenLabs / Azure TTS API 对接
+- [ ] **TTS-04**: TTS 队列管理：FIFO 队列，长文本分段（500 chars/chunk），状态广播
+- [ ] **TTS-05**: 音频流传输：Tauri Channel 向 WebView 传输音频块，Web Audio API 播放 + RMS 振幅分析
 
-### CLEAN — Live2D Code Removal
+### HTTP Adapter
 
-- [ ] **CLEAN-01**: Remove `src/vendor/cubism/` directory (~200 files)
-- [ ] **CLEAN-02**: Remove `public/live2dcubismcore.js` and `public/Framework/`
-- [ ] **CLEAN-03**: Remove `public/models/` Live2D model files
-- [ ] **CLEAN-04**: Delete `Live2DRenderer.ts` and `capability-resolver.ts`
-- [ ] **CLEAN-05**: Update `vite.config.mts` and `tsconfig.json` — remove @framework alias
-- [ ] **CLEAN-06**: Update `src/main.tsx` — remove Live2D WASM dynamic loading
-- [ ] **CLEAN-07**: Remove unused electron/Cubism-related packages from package.json (gsap, extract-zip)
+- [ ] **ADP-01**: axum 嵌入式 HTTP 服务器，端口 18765，POST /adapter 和 GET /adapter/capabilities
+- [ ] **ADP-02**: 服务器生命周期管理：CancellationToken 优雅关闭，与 Tauri app quit 联动
 
-### MODEL — Model System Adaptation
+### AI Planner
 
-- [ ] **MODEL-01**: Model registry (`model-registry.ts`) supports `.riv` model type
-- [ ] **MODEL-02**: Deprecate action-index for Rive models — SQLite module (`action-index.ts`) stays for future use, skip indexing for `.riv` models
-- [ ] **MODEL-03**: Update model import flow (`model-manager.ts`) for `.riv` files
-- [ ] **MODEL-04**: Clean up `vivipet-assets://` protocol if no longer needed
-- [ ] **MODEL-05**: Provide user Rive model integration docs/API
+- [ ] **AI-01**: reqwest 调用 OpenAI Chat Completions API，function calling 支持
+- [ ] **AI-02**: 三模式运行：rule / ai / hybrid，配置持久化
+
+### Model Management
+
+- [ ] **MOD-01**: .riv 文件导入（tauri-plugin-dialog 文件选择器），复制到应用数据目录
+- [ ] **MOD-02**: 模型目录扫描（walkdir），自动发现 .riv 文件，生成/更新 models.json
+
+### Frontend IPC Migration
+
+- [ ] **IPC-01**: 创建 `src/tauri-adapter.ts` 抽象层，镜像旧 `window.electronAPI` 接口
+- [ ] **IPC-02**: 所有前端组件（App.tsx, PetStage, SpeechBubble, etc.）从 `window.electronAPI` 切换到 `@tauri-apps/api`
+- [ ] **IPC-03**: 移除 preload.ts、全部 `window.electronAPI` 引用、electron IPC 相关类型
+
+### Distribution
+
+- [ ] **DST-01**: tauri-plugin-updater 集成，前端自定义更新通知 UI
+- [ ] **DST-02**: macOS .dmg 构建 + 签名 + 公证
+- [ ] **DST-03**: Windows .msi 构建 + 签名
+- [ ] **DST-04**: Linux .AppImage 构建
+
+### Cleanup
+
+- [ ] **CLN-01**: 移除 Electron/Node.js 全部依赖：electron、electron-builder、electron-log、相关 package.json 条目
 
 ## v2 Requirements
 
-- **SETT-01**: AI Planner settings panel — verify works with new renderer
-- **SETT-02**: TTS settings panel — verify works with new renderer
-- **PERF-01**: Performance optimization — idle render loop reduction
+### Deep System Monitoring
+
+- **MON-01**: Rust sysinfo crate 集成，采集 CPU/内存/进程/网络等系统指标
+- **MON-02**: 指标通过 Tauri events 实时推送到前端展示
+- **MON-03**: 具体的监控 UI 和交互模式（后续设计）
+
+### Post-Migration Enhancements
+
+- **PST-01**: TTS provider native FFI 替代 std::process::Command（提升稳定性和延迟）
+- **PST-02**: 前端更新通知 UI 完善（进度条、暂停/恢复）
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Rive Data Binding / ViewModel | State machine inputs sufficient for pet character |
-| Rive Layout systems | Not building responsive UI; fixed canvas area |
-| Multi-artboard switching | Single character, single artboard |
-| Mesh deformations in Rive | Vector animations sufficient; if needed, switch to @rive-app/webgl2 |
-| Rive scripting (lua) | All logic stays in TypeScript |
+| 深度系统监控指标 | 先搭框架，具体监控项在迁移完成后规划 |
+| TTS native FFI | 初始阶段用 std::process::Command 足够，FFI 优化是后话 |
+| 多角色同屏 | 不在此版本范围内 |
+| Web 版本 | 桌面应用，不计划 Web 部署 |
+| 移动端 | 不计划 iOS/Android 版本 |
+| 实时语音对话 | TTS 为单向播报，不含语音识别和对话管理 |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RIVE-01 | Phase 1 | Pending |
-| RIVE-02 | Phase 1 | Pending |
-| RIVE-03 | Phase 1 | Pending |
-| RIVE-04 | Phase 1 | Pending |
-| RIVE-05 | Phase 1 | Pending |
-| RIVE-06 | Phase 1 | Pending |
-| RIVE-07 | Phase 1 | Pending |
-| SYNC-01 | Phase 2 | Pending |
-| SYNC-02 | Phase 2 | Pending |
-| SYNC-03 | Phase 2 | Pending |
-| SYNC-04 | Phase 2 | Pending |
-| SYNC-05 | Phase 2 | Pending |
-| CLEAN-01 | Phase 3 | Pending |
-| CLEAN-02 | Phase 3 | Pending |
-| CLEAN-03 | Phase 3 | Pending |
-| CLEAN-04 | Phase 3 | Pending |
-| CLEAN-05 | Phase 3 | Pending |
-| CLEAN-06 | Phase 3 | Pending |
-| CLEAN-07 | Phase 3 | Pending |
-| MODEL-01 | Phase 4 | Pending |
-| MODEL-02 | Phase 4 | Pending |
-| MODEL-03 | Phase 4 | Pending |
-| MODEL-04 | Phase 4 | Pending |
-| MODEL-05 | Phase 4 | Pending |
+| FND-01 | Phase 1 | Pending |
+| FND-02 | Phase 1 | Pending |
+| FND-03 | Phase 1 | Pending |
+| FND-04 | Phase 1 | Pending |
+| FND-05 | Phase 1 | Pending |
+| FND-06 | Phase 7 | Pending |
+| TTS-01 | Phase 2 | Pending |
+| TTS-02 | Phase 2 | Pending |
+| TTS-03 | Phase 2 | Pending |
+| TTS-04 | Phase 2 | Pending |
+| TTS-05 | Phase 2 | Pending |
+| ADP-01 | Phase 3 | Pending |
+| ADP-02 | Phase 3 | Pending |
+| AI-01 | Phase 5 | Pending |
+| AI-02 | Phase 5 | Pending |
+| MOD-01 | Phase 4 | Pending |
+| MOD-02 | Phase 4 | Pending |
+| IPC-01 | Phase 6 | Pending |
+| IPC-02 | Phase 6 | Pending |
+| IPC-03 | Phase 6 | Pending |
+| DST-01 | Phase 7 | Pending |
+| DST-02 | Phase 7 | Pending |
+| DST-03 | Phase 7 | Pending |
+| DST-04 | Phase 7 | Pending |
+| CLN-01 | Phase 7 | Pending |
 
 **Coverage:**
-- v1 requirements: 24 total
-- Mapped to phases: 24
+- v1 requirements: 25 total
+- Mapped to phases: 25
 - Unmapped: 0 ✓
 
 ---
-*Requirements defined: 2026-05-08*
-*Last updated: 2026-05-08 after initial definition*
+*Requirements defined: 2026-05-09*
+*Last updated: 2026-05-09 after milestone 2 initialization*
