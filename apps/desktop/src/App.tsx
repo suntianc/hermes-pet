@@ -539,6 +539,27 @@ const App: React.FC = () => {
     return () => cleanups.forEach((cleanup) => cleanup());
   }, [clearActionResetTimer, handleMenuAction, handlePetEvent, setAction]);
 
+  // ── TTS Integration Test Harness ──────────────────────────────────
+  // Phase 2 temporary: exposes TtsTest for DevTools console testing.
+  // REMOVAL: Delete this block AND src/tts-test.ts in Phase 6.
+  // To test: cargo tauri dev → DevTools console → run:
+  //   window.__VIVIPET_TTS_TEST__.speak('Hello!')
+  //   window.__VIVIPET_TTS_TEST__.getConfig().then(c => { c.enabled = true; c.source = 'System'; window.__VIVIPET_TTS_TEST__.setConfig(c) })
+  //   window.__VIVIPET_TTS_TEST__.speak('After enabling TTS')
+  useEffect(() => {
+    let cancelled = false;
+    import('./tts-test').then(({ TtsTest }) => {
+      if (!cancelled) {
+        (window as any).__VIVIPET_TTS_TEST__ = TtsTest;
+        console.log('[TTS-Test] Harness ready. Run window.__VIVIPET_TTS_TEST__.speak() to test.');
+      }
+    }).catch((err) => {
+      console.warn('[TTS-Test] Failed to load test harness:', err);
+    });
+    return () => { cancelled = true; };
+  }, []);
+  // ── End TTS Test Harness ──────────────────────────────────────────
+
   return (
     <div style={{
       width: '100%',
