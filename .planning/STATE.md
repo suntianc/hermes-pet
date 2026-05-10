@@ -1,3 +1,18 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: TTS Engine — system/local/cloud providers, Channel streaming, 5 Tauri commands
+status: completed
+last_updated: "2026-05-10T08:02:18.614Z"
+progress:
+  total_phases: 8
+  completed_phases: 6
+  total_plans: 17
+  completed_plans: 14
+  percent: 82
+---
+
 # STATE.md — Hermes DeskPet
 
 **Status:** Milestone 2 — Tauri Migration | Phase 2 TTS Engine Complete
@@ -19,10 +34,10 @@
 | Item | Value |
 |------|-------|
 | Milestone | 2 — Tauri Migration |
-| Current Phase | Phase 2: TTS Engine |
-| Current Plan | — |
+| Current Phase | Phase 3: HTTP Adapter |
+| Current Plan | 1/1 complete |
 | Status | Complete |
-| Progress | 5/25 requirements complete |
+| Progress | 7/25 requirements complete |
 
 ### Phase Snapshot
 
@@ -30,7 +45,7 @@
 |-------|--------|-------------|-----------|
 | 1 — Foundation | Complete | FND-01~05 (06 deferred) | Verifying |
 | 2 — TTS Engine | **Complete** | TTS-01~05 ✅ | Verified |
-| 3 — HTTP Adapter | Not started | ADP-01~02 | Ready to plan |
+| 3 — HTTP Adapter | **Complete** | ADP-01~02 ✅ | Verified |
 | 4 — Model Management | Not started | MOD-01~02 | Ready to plan |
 | 5 — AI Planner | Not started | AI-01~02 | Blocked by Phase 4 |
 | 6 — Frontend IPC Migration | Not started | IPC-01~03 | Blocked by Phases 2-5 |
@@ -44,9 +59,9 @@
 | Metric | Current | Target |
 |--------|---------|--------|
 | Requirements mapped | 25/25 ✓ | 100% |
-| Requirements complete | 5/25 | 20% |
+| Requirements complete | 7/25 | 28% |
 | Phases defined | 8 | 8 |
-| Phases complete | 2/8 | 25% |
+| Phases complete | 3/8 | 37.5% |
 | Electron backend files remaining | ~15 | 0 |
 | Rust backend files to write | 0 | ~25 |
 | Rust backend files written | ~20 | <25 |
@@ -88,20 +103,22 @@
 
 ### Last Session
 
-- Phase 2 (TTS Engine) execution completed
-- 4 plans executed: foundation → providers → wiring → frontend test
-- 14 Rust source files created/updated
-- 5 TTS requirements satisfied (TTS-01~05)
-- 2 deviations: tokio dependency, abort flag propagation fix
+- Phase 3 (HTTP Adapter) execution completed
+- 1 plan executed: axum server, routes, lifecycle, wiring
+- 4 Rust source files created (adapter/ module)
+- 3 Rust source files modified (lib.rs, state.rs, error.rs)
+- 2 requirements satisfied (ADP-01, ADP-02)
+- 3 deviations: tokio-util feature, App::run() returns unit, State borrow lifetime
+- 9 git commits on branch `phase-03-http-adapter`
 
 ### Next Action
 
-Proceed to Phase 3: HTTP Adapter (axum on :18765) or Phase 4: Model Management. Phases 2-4 can execute in parallel.
+Proceed to Phase 4: Model Management (.riv model management).
 
 ```
 Phase 1: Foundation → cargo tauri dev, frameless window, tray, logging, single instance (CI/CD deferred) ✅
 Phase 2: TTS → system/local/cloud providers, queue, Channel streaming ✅
-Phase 3: Adapter → axum :18765, graceful shutdown
+Phase 3: Adapter → axum :18765, graceful shutdown ✅
 Phase 4: Model → import, walkdir scan, registry
 Phase 5: AI → reqwest OpenAI, function calling, rule/ai/hybrid modes
 Phase 6: IPC → tauri-adapter.ts, migrate components, remove preload
@@ -111,4 +128,4 @@ Phase 8: Cleanup → remove all Electron/Node.js
 
 ---
 
-*Last updated: 2026-05-10 after Phase 2 TTS Engine execution*
+*Last updated: 2026-05-10 after Phase 3 HTTP Adapter execution*

@@ -10,7 +10,7 @@
 
 - [ ] **Phase 1: Foundation** — Tauri 2 scaffold, window, tray, logging, single instance, CI/CD
 - [ ] **Phase 2: TTS Engine** — 3-provider TTS queue management and audio streaming to WebView
-- [ ] **Phase 3: HTTP Adapter** — Embedded axum server on port 18765 with graceful shutdown
+- [x] **Phase 3: HTTP Adapter** — Embedded axum server on port 18765 with graceful shutdown ✅
 - [ ] **Phase 4: Model Management** — .riv file import, directory scanning, model registry
 - [ ] **Phase 5: AI Planner** — OpenAI client with function calling and three planning modes
 - [ ] **Phase 6: Frontend IPC Migration** — All components from `window.electronAPI` to `@tauri-apps/api`
@@ -22,17 +22,21 @@
 ## Phase Details
 
 ### Phase 1: Foundation
-**Goal**: Tauri 2 project is scaffolded with working window, tray, logging, single instance, and CI/CD pipeline
+**Goal**: Tauri 2 project is scaffolded with working window, tray, logging, single instance
 **Depends on**: Nothing
-**Requirements**: FND-01, FND-02, FND-03, FND-04, FND-05, FND-06
+**Requirements**: FND-01, FND-02, FND-03, FND-04, FND-05
 **Success Criteria** (what must be TRUE):
 1. Developer can run `cargo tauri dev` and see a frameless transparent window anchored to bottom-right
 2. System tray icon appears with Show/Hide and Quit options working
 3. Second app instance focuses the existing window instead of creating a duplicate
 4. Rust tracing log messages (info/warn/error) appear in the configured log file
-5. CI pipeline (GitHub Actions) builds the app for macOS (arm64+x64), Windows (x64), and Linux (x64)
-6. Frontend can invoke a Tauri command via `@tauri-apps/api` and receive a response
-**Plans**: TBD
+5. Frontend can invoke a Tauri command via `@tauri-apps/api` and receive a response
+**Plans**: 3 plans (Waves 1→2→3)
+
+Plans:
+- [ ] `01-01-PLAN.md` — Tauri 2 scaffold + frontend config + tracing init (FND-01, FND-04)
+- [ ] `01-02-PLAN.md` — Window management + system tray + single instance (FND-02, FND-03, FND-05)
+- [ ] `01-03-PLAN.md` — Logging file output + IPC verification + integration testing (FND-04)
 
 ### Phase 2: TTS Engine
 **Goal**: All three TTS providers (system/local/cloud) work in Rust, audio streams to WebView via Channel
@@ -44,9 +48,15 @@
 3. Long text (>500 chars) is automatically split into chunks and queued FIFO with sequential playback
 4. Audio chunks stream from Rust → WebView via Tauri Channel and play through Web Audio API with real-time RMS analysis
 5. Rive pet's mouth animation (`mouth_open` input) syncs with TTS audio amplitude (target <200ms latency)
-**Plans**: TBD
+**Plans**: 4 plans (Waves 1→2→3→4)
 
-### Phase 3: HTTP Adapter
+Plans:
+- [ ] `02-01-PLAN.md` — Config types + text splitting queue + provider trait (TTS-04)
+- [ ] `02-02-PLAN.md` — All 3 providers (system/local/cloud) + streaming types (TTS-01, TTS-02, TTS-03)
+- [ ] `02-03-PLAN.md` — TtsManager + Tauri commands + wiring (TTS-04, TTS-05)
+- [ ] `02-04-PLAN.md` — Frontend integration test + Channel verification (TTS-05)
+
+### Phase 3: HTTP Adapter ✅
 **Goal**: Embedded axum HTTP server on port 18765 accepts external Agent events and forwards to WebView
 **Depends on**: Phase 1
 **Requirements**: ADP-01, ADP-02
@@ -55,7 +65,8 @@
 2. `curl http://localhost:18765/adapter/capabilities` returns JSON with available phases and features
 3. Adapter server shuts down cleanly when app exits (verified by port release, no orphan processes)
 4. Events posted to `/adapter` arrive in WebView as Tauri events and trigger pet animation changes
-**Plans**: TBD
+**Plans**: 1 plan completed
+- [x] `03-01-PLAN.md` — Axum server on :18765, event types + normalize + policy, lifecycle wiring (ADP-01, ADP-02) ✅
 
 ### Phase 4: Model Management
 **Goal**: Users can import .riv model files and the app automatically indexes all available models
@@ -136,9 +147,9 @@ Phase 1: Foundation
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1 — Foundation | 0/0 | Not started | - |
-| 2 — TTS Engine | 0/0 | Not started | - |
-| 3 — HTTP Adapter | 0/0 | Not started | - |
+| 1 — Foundation | 3/3 | Complete | ✅ |
+| 2 — TTS Engine | 4/4 | Complete | ✅ |
+| 3 — HTTP Adapter | 1/1 | Complete | ✅ |
 | 4 — Model Management | 0/0 | Not started | - |
 | 5 — AI Planner | 0/0 | Not started | - |
 | 6 — Frontend IPC Migration | 0/0 | Not started | - |

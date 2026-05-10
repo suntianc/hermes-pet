@@ -24,8 +24,8 @@
 
 ### HTTP Adapter
 
-- [ ] **ADP-01**: axum 嵌入式 HTTP 服务器，端口 18765，POST /adapter 和 GET /adapter/capabilities
-- [ ] **ADP-02**: 服务器生命周期管理：CancellationToken 优雅关闭，与 Tauri app quit 联动
+- [x] **ADP-01**: axum 嵌入式 HTTP 服务器，端口 18765，POST /adapter 和 GET /adapter/capabilities
+- [x] **ADP-02**: 服务器生命周期管理：Notify 优雅关闭，与 Tauri app quit 联动
 
 ### AI Planner
 
@@ -87,14 +87,14 @@
 | FND-03 | Phase 1 | Pending |
 | FND-04 | Phase 1 | Pending |
 | FND-05 | Phase 1 | Pending |
-| FND-06 | Phase 1 | Pending |
+| FND-06 | Deferred | Deferred per D-12 |
 | TTS-01 | Phase 2 | Pending |
 | TTS-02 | Phase 2 | Pending |
 | TTS-03 | Phase 2 | Pending |
 | TTS-04 | Phase 2 | Pending |
 | TTS-05 | Phase 2 | Pending |
-| ADP-01 | Phase 3 | Pending |
-| ADP-02 | Phase 3 | Pending |
+| ADP-01 | Phase 3 | Complete ✅ |
+| ADP-02 | Phase 3 | Complete ✅ |
 | MOD-01 | Phase 4 | Pending |
 | MOD-02 | Phase 4 | Pending |
 | AI-01 | Phase 5 | Pending |
