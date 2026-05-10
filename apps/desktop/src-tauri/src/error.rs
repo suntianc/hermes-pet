@@ -14,6 +14,8 @@ pub enum AppError {
     Tts(String),
     #[error("Config error: {0}")]
     Config(String),
+    #[error("Model error: {0}")]
+    Model(String),
 }
 
 impl Serialize for AppError {
