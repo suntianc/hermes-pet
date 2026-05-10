@@ -2,6 +2,7 @@ use std::sync::Mutex;
 
 use tauri::Manager;
 
+mod adapter;
 mod commands;
 mod error;
 mod logging;
@@ -46,6 +47,23 @@ pub fn run() {
             window::setup_window(app)?;
             tray::build_tray(app)?;
 
+            // ── Start Adapter HTTP Server ──────────────────────────────────
+            let handle = app.handle().clone();
+            let lifecycle = adapter::lifecycle::AdapterLifecycle::new();
+            let shutdown_signal = lifecycle.shutdown_signal();
+
+            // Store lifecycle in AppState for later cancellation on Exit
+            let state_lock = app.state::<Mutex<state::AppState>>();
+            let guard = state_lock.lock().expect("AppState lock poisoned during adapter setup");
+            guard.adapter_lifecycle.lock().expect("adapter_lifecycle lock poisoned").replace(lifecycle);
+            drop(guard);
+
+            // Spawn axum server on Tauri's shared Tokio runtime
+            tauri::async_runtime::spawn(async move {
+                let port = adapter::start_server(handle, shutdown_signal).await;
+                tracing::info!("[Adapter] Server started on port {}", port);
+            });
+
             tracing::info!("ViviPet Tauri app setup complete");
             Ok(())
         })
@@ -63,8 +81,25 @@ pub fn run() {
             commands::tts::tts_set_config,
             commands::tts::tts_get_voices,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            if let tauri::RunEvent::Exit = event {
+                // Graceful shutdown of adapter server
+                let state_lock = app_handle.state::<Mutex<state::AppState>>();
+                let guard = match state_lock.lock() {
+                    Ok(g) => g,
+                    Err(_) => return,
+                };
+                let lc_guard = guard.adapter_lifecycle.lock().expect("adapter_lifecycle lock poisoned");
+                if let Some(lifecycle) = lc_guard.as_ref() {
+                    lifecycle.shutdown();
+                    tracing::info!("[Adapter] Server shut down gracefully");
+                }
+                drop(lc_guard);
+                drop(guard);
+            }
+        });
 }
 
 /// Load TTS config from tauri-plugin-store on startup.
