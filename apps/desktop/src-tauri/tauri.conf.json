@@ -28,7 +28,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["dmg", "msi", "appimage"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -38,10 +38,8 @@
     ],
     "macOS": {
       "minimumSystemVersion": "12.0",
-      "signing": {
-        "identity": "$APPLE_SIGNING_IDENTITY"
-      },
-      "frameworks": []
+      "signingIdentity": "-",
+      "entitlements": "entitlements.plist"
     },
     "linux": {
       "deb": {
@@ -54,16 +52,17 @@
     "windows": {
       "wix": null,
       "nsis": {
-        "installMode": "currentUser",
-        "signCommand": "$SIGN_COMMAND"
+        "installMode": "currentUser"
       }
     }
   },
   "plugins": {
     "updater": {
-      "pubkey": "YOUR_UPDATER_SIGNATURE_PUBKEY",
+      "active": true,
+      "dialog": false,
+      "pubkey": "TODO_ADD_YOUR_PUBKEY_HERE",
       "endpoints": [
-        "https://github.com/suntianc/ViviPet/releases/latest/download/updater.json"
+        "https://releases.vivipet.app/{{target}}/{{current_version}}"
       ],
       "windows": {
         "installMode": "currentUser"

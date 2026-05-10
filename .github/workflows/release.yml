@@ -1,5 +1,5 @@
-# ViviPet Release Workflow (Tauri 2)
-# On v* tag push: build for all platforms → generate updater artifacts → GitHub Release
+# ViviPet Release Workflow (Tauri 2 + tauri-action)
+# On v* tag push: build cross-platform → sign → notarize → GitHub Release with auto-update
 # ── Usage ──────────────────────────────────────────────────────────
 #   git tag v0.2.0 && git push origin v0.2.0
 # ── Required Secrets ───────────────────────────────────────────────
@@ -7,6 +7,8 @@
 #   APPLE_ID                 - Apple ID email for notarization
 #   APPLE_PASSWORD           - App-specific password for notarization
 #   APPLE_TEAM_ID            - Apple Team ID
+#   APPLE_KEY_ID             - App Store Connect Key ID (notarization)
+#   APPLE_ISSUER_ID          - App Store Connect Issuer ID
 #   WINDOWS_SIGN_CERT        - Base64-encoded Windows signing certificate
 #   WINDOWS_SIGN_PASSWORD    - Certificate password
 #   UPDATER_SIGN_PUBKEY      - Public key for update signature verification
@@ -48,8 +50,16 @@ jobs:
             echo "ERROR: Tag version ${{ steps.get-version.outputs.version }} does not match tauri.conf.json version $CONFIG_VER"
             exit 1
           fi
+      - name: Validate updater pubkey is configured
+        run: |
+          PUBKEY=$(jq -r '.plugins.updater.pubkey' apps/desktop/src-tauri/tauri.conf.json)
+          if [ "$PUBKEY" = "TODO_ADD_YOUR_PUBKEY_HERE" ] || [ -z "$PUBKEY" ]; then
+            echo "WARNING: updater pubkey is placeholder — generate one with 'tauri signer generate'"
+          else
+            echo "Updater pubkey is configured"
+          fi
 
-  # ── Build: All platforms ────────────────────────────────────────
+  # ── Build: All platforms via tauri-action v4 ────────────────────
   build:
     name: Build (${{ matrix.target }})
     needs: [verify]
@@ -118,8 +128,13 @@ jobs:
           npm run build -w packages/pet-action-dsl
           npm run build -w packages/shared
 
-      - name: Build desktop app
-        run: npm run build -w apps/desktop
+      - name: Build & bundle with tauri-action
+        uses: tauri-apps/tauri-action@v4
+        id: tauri-build
+        with:
+          projectPath: apps/desktop
+          tauriScript: npm
+          args: --target ${{ matrix.target }}
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.UPDATER_SIGN_PRIVKEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
@@ -127,6 +142,8 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_KEY_ID: ${{ secrets.APPLE_KEY_ID }}
+          APPLE_ISSUER_ID: ${{ secrets.APPLE_ISSUER_ID }}
           # Windows signing (set on all platforms — only Windows uses it)
           SIGN_COMMAND: ${{ secrets.WINDOWS_SIGN_CERT && format('signtool sign /fd SHA256 /f {0} /p {1} $file', 'cert.pfx', secrets.WINDOWS_SIGN_PASSWORD) || '' }}
 
@@ -135,9 +152,10 @@ jobs:
           echo "=== Bundle artifacts ==="
           find apps/desktop/src-tauri/target/release/bundle -type f 2>/dev/null || echo "(no bundle dir)"
           echo "=== Updater artifacts ==="
-          find apps/desktop/src-tauri/target/release -maxdepth 1 -name "*.sig" -o -name "*.tar.gz" 2>/dev/null || echo "(no updater artifacts)"
-          echo "=== Full target release ==="
-          ls -la apps/desktop/src-tauri/target/release/ 2>/dev/null | head -20
+          find apps/desktop/src-tauri/target/release -maxdepth 1 \( -name "*.sig" -o -name "*.tar.gz" \) 2>/dev/null || echo "(no updater artifacts)"
+          echo "=== tauri-action outputs ==="
+          echo "releaseUrl: ${{ steps.tauri-build.outputs.releaseUrl }}"
+          echo "artifactPaths: ${{ steps.tauri-build.outputs.artifactPaths }}"
 
       - name: Upload bundle artifacts
         uses: actions/upload-artifact@v4
@@ -156,6 +174,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check updater pubkey
+        id: check-pubkey
+        run: |
+          PUBKEY=$(jq -r '.plugins.updater.pubkey' apps/desktop/src-tauri/tauri.conf.json)
+          echo "pubkey=$PUBKEY" >> "$GITHUB_OUTPUT"
       - name: Download all platform artifacts
         uses: actions/download-artifact@v4
         with:
@@ -185,8 +208,11 @@ jobs:
             done
           done
 
-          jq -n --arg version "$VERSION" --argjson platforms "$PLATFORMS" \
-            '{"version": $version, "platforms": $platforms}' > updater.json
+          jq -n \
+            --arg version "$VERSION" \
+            --argjson platforms "$PLATFORMS" \
+            --arg pubkey "${{ steps.check-pubkey.outputs.pubkey }}" \
+            '{"version": $version, "pubkey": $pubkey, "platforms": $platforms}' > updater.json
           echo "=== updater.json ==="
           cat updater.json
           echo "updater-json-path=$(pwd)/updater.json" >> "$GITHUB_OUTPUT"
