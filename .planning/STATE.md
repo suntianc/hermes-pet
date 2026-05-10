@@ -2,21 +2,21 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Frontend IPC Migration — remove preload/ipc, verify build
+current_phase: Distribution — updater + cross-platform bundle config
 status: completed
-last_updated: "2026-05-11T10:30:00.000Z"
+last_updated: "2026-05-11T11:00:00.000Z"
 progress:
   total_phases: 8
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 17
-  completed_plans: 15
-  percent: 88
+  completed_plans: 16
+  percent: 94
 ---
 
 # STATE.md — Hermes DeskPet
 
-**Status:** Milestone 2 — Tauri Migration | Phase 6: Frontend IPC Migration Complete
-**Current Phase:** Frontend IPC Migration — remove preload/ipc, verify build
+**Status:** Milestone 2 — Tauri Migration | Phase 7: Distribution Complete
+**Current Phase:** Distribution — updater + cross-platform bundle config
 
 ---
 
@@ -46,11 +46,11 @@ progress:
 | 1 — Foundation | Complete | FND-01~05 (06 deferred) | Verifying |
 | 2 — TTS Engine | **Complete** | TTS-01~05 ✅ | Verified |
 | 3 — HTTP Adapter | **Complete** | ADP-01~02 ✅ | Verified |
-| 4 — Model Management | Not started | MOD-01~02 | Ready to plan |
+| 4 — Model Management | **Complete** | MOD-01~02 ✅ | Verified |
 | 5 — AI Planner | Not started | AI-01~02 | Blocked by Phase 4 |
 | 6 — Frontend IPC Migration | **Complete** | IPC-01~03 ✅ | Verified |
-| 7 — Distribution | Not started | DST-01~04 | Blocked by Phase 6 |
-| 8 — Cleanup | Not started | CLN-01 | Blocked by Phase 7 |
+| 7 — Distribution | **Complete** ✅ | DST-01~04 ✅ | Verified |
+| 8 — Cleanup | Not started | CLN-01 | Ready to plan |
 
 ---
 
@@ -59,9 +59,9 @@ progress:
 | Metric | Current | Target |
 |--------|---------|--------|
 | Requirements mapped | 25/25 ✓ | 100% |
-| Requirements complete | 10/25 | 40% |
+| Requirements complete | 9/25 | 36% |
 | Phases defined | 8 | 8 |
-| Phases complete | 6/8 | 75% |
+| Phases complete | 7/8 | 87% |
 | Electron IPC files removed | 2 (preload.ts + ipc.ts) | 0 remaining |
 | Frontend Electron deps removed | 3 (electron, electron-log, electron-builder) | 0 |
 | vite build | Pass ✓ | 0 errors |
