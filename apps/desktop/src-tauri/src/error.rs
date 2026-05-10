@@ -16,6 +16,8 @@ pub enum AppError {
     Config(String),
     #[error("Model error: {0}")]
     Model(String),
+    #[error("AI planner error: {0}")]
+    Ai(String),
 }
 
 impl Serialize for AppError {

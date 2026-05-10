@@ -3,6 +3,7 @@ use std::sync::Mutex;
 use tauri::Manager;
 
 mod adapter;
+mod ai;
 mod commands;
 mod error;
 mod logging;
@@ -45,6 +46,11 @@ pub fn run() {
             // Load persisted TTS config from tauri-plugin-store
             if let Err(e) = load_tts_config(app) {
                 tracing::warn!("Could not load TTS config from store: {e}");
+            }
+
+            // Load persisted AI planner config from tauri-plugin-store
+            if let Err(e) = load_ai_config(app) {
+                tracing::warn!("Could not load AI config from store: {e}");
             }
 
             // Ensure models directory exists on startup
@@ -92,6 +98,10 @@ pub fn run() {
             commands::models::model_import,
             commands::models::model_refresh_scan,
             commands::models::model_remove,
+            commands::ai::ai_plan,
+            commands::ai::ai_get_config,
+            commands::ai::ai_set_config,
+            commands::ai::ai_test_connection,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
@@ -126,6 +136,23 @@ fn load_tts_config(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         let mut guard = state.lock().map_err(|e| format!("Lock: {e}"))?;
         guard.tts_config = config;
         tracing::info!("Loaded TTS config from store");
+    }
+    Ok(())
+}
+
+/// Load AI planner config from tauri-plugin-store on startup.
+/// Falls back to defaults if store key doesn't exist or deserialization fails.
+fn load_ai_config(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    use tauri_plugin_store::StoreExt;
+
+    let store = app.store("settings.json")?;
+    if let Some(value) = store.get("ai_config") {
+        let config: ai::AiConfig = serde_json::from_value(value.clone())?;
+        let state = app.state::<Mutex<state::AppState>>();
+        let mut guard = state.lock().map_err(|e| format!("Lock: {e}"))?;
+        guard.ai_config = config.clone();
+        guard.ai_planner = ai::AiPlanner::new(config);
+        tracing::info!("Loaded AI planner config from store");
     }
     Ok(())
 }

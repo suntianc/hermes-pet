@@ -1,3 +1,4 @@
+pub mod ai;
 pub mod models;
 pub mod tts;
 pub mod window;
