@@ -5,6 +5,7 @@ mod error;
 mod logging;
 mod state;
 mod tray;
+mod tts;
 mod window;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
