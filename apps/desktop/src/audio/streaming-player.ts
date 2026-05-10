@@ -8,7 +8,7 @@
  * 这里使用懒初始化，在首次播放时自动创建
  */
 
-import { AudioChunk } from '../../electron/tts/audio-chunk';
+import { AudioChunk } from '../types/audio-chunk';
 
 export type PlayerState = 'idle' | 'accumulating' | 'playing' | 'ended' | 'error';
 
