@@ -11,16 +11,12 @@ import { applyPetStateEvent } from './features/pet-events/apply-pet-event';
 import { PetEventAggregator } from './features/pet-events/pet-event-aggregator';
 import { isPetStateEvent, PetTTSOptions } from './features/pet-events/pet-event-schema';
 import { PetSessionManager } from './features/pet-events/pet-session-manager';
+import { petWindow, petTTS, petModel, petAI, onPetAction, onPetEvent, onTTSState, onTTSConfig } from './tauri-adapter';
+import type { TTSConfigDTO, AiConfigDTO } from './tauri-types';
+import type { TtsStreamEvent } from './types/audio-chunk';
 
 
-/** TTS 状态（来自主进程） */
-interface TTSStateEvent {
-  status: 'idle' | 'playing' | 'completed' | 'stopped' | 'error';
-  requestId?: string;
-  text?: string;
-  message?: string;
-}
-
+/** TTS 配置快照（适配层简化版） */
 interface TTSConfigSnapshot {
   enabled?: boolean;
   source?: string;
@@ -35,15 +31,6 @@ interface AIPlannerConfigSnapshot {
   model: string;
   timeoutMs: number;
   fallbackToRule: boolean;
-}
-
-/** TTS 音频块（来自主进程） */
-interface TTSAudioChunkEvent {
-  data: Uint8Array;
-  format: string;
-  sampleRate: number;
-  seq: number;
-  isFinal: boolean;
 }
 
 const App: React.FC = () => {
@@ -153,15 +140,14 @@ const App: React.FC = () => {
     return () => { player.dispose(); audioPlayerRef.current = null; };
   }, [setIsSpeaking, setTTSAmplitude]);
 
-  // ---- TTS 状态监听 ----
+  // ---- TTS 状态监听（通过 Tauri 事件） ----
   useEffect(() => {
-    const api = (window as any).electronAPI;
-    if (!api?.petTTS?.onTTSState) return;
-    return api.petTTS.onTTSState((stateRaw: unknown) => {
-      const s = stateRaw as TTSStateEvent;
+    const cleanups: Array<() => void> = [];
+    onTTSState((stateRaw: unknown) => {
+      const s = stateRaw as { status: string; request_id?: string; text?: string; message?: string };
       if (s.status === 'completed') {
-        if (s.requestId) {
-          pendingTTSFallbackRef.current.delete(s.requestId);
+        if (s.request_id) {
+          pendingTTSFallbackRef.current.delete(s.request_id);
         }
         return;
       }
@@ -170,8 +156,8 @@ const App: React.FC = () => {
         ? { status: 'playing', text: s.text || '' }
         : { status: s.status as any });
       if (s.status === 'error') {
-        const fallbackKey = s.requestId && pendingTTSFallbackRef.current.has(s.requestId)
-          ? s.requestId
+        const fallbackKey = s.request_id && pendingTTSFallbackRef.current.has(s.request_id)
+          ? s.request_id
           : (pendingTTSFallbackRef.current.keys().next().value as string | undefined);
         if (!fallbackKey) return;
         const fallback = pendingTTSFallbackRef.current.get(fallbackKey);
@@ -183,24 +169,9 @@ const App: React.FC = () => {
       if ((s.status === 'idle' || s.status === 'stopped') && pendingTTSFallbackRef.current.size > 0) {
         pendingTTSFallbackRef.current.clear();
       }
-    });
+    }).then(fn => cleanups.push(fn));
+    return () => cleanups.forEach(fn => fn());
   }, [setTTSState, showBubble]);
-
-  // ---- TTS 音频块监听 ----
-  useEffect(() => {
-    const api = (window as any).electronAPI;
-    if (!api?.petTTS?.onTTSAudioChunk) return;
-    return api.petTTS.onTTSAudioChunk((chunkRaw: unknown) => {
-      const c = chunkRaw as TTSAudioChunkEvent;
-      audioPlayerRef.current?.pushChunk({
-        data: c.data,
-        format: c.format as any,
-        sampleRate: c.sampleRate,
-        seq: c.seq,
-        isFinal: c.isFinal,
-      });
-    });
-  }, []);
 
   // ---- TTS 配置快照（启动时异步加载）----
   const [ttsConfig, setTTSConfig] = useState<TTSConfigSnapshot>({});
@@ -213,10 +184,10 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const api = (window as any).electronAPI?.petTTS;
-    api?.getConfig().then(updateTTSConfigSnapshot).catch(() => {});
-    const cleanup = api?.onTTSConfig?.(updateTTSConfigSnapshot);
-    return cleanup;
+    const cleanups: Array<() => void> = [];
+    petTTS.getConfig().then(updateTTSConfigSnapshot).catch(() => {});
+    onTTSConfig(updateTTSConfigSnapshot).then(fn => cleanups.push(fn));
+    return () => cleanups.forEach(fn => fn());
   }, [updateTTSConfigSnapshot]);
 
   // ---- 语音/气泡分发器（用 ref 隔离，不参与任何 deps 链）----
@@ -235,29 +206,49 @@ const App: React.FC = () => {
       return;
     }
 
-    const optionObject = typeof ttsOpts === 'object' ? ttsOpts : undefined;
-    const opts = optionObject
-      ? { text, voice: optionObject.voice, model: optionObject.model || 'preset', ...(optionObject.model === 'instruct' ? { instruct: optionObject.instruct } : {}) }
-      : { text, model: 'preset' as const };
+    const voice = typeof ttsOpts === 'object' && ttsOpts.voice ? ttsOpts.voice : undefined;
 
     const fallbackKey = `pending_${++pendingTTSSequenceRef.current}`;
     if (cfg.fallbackToBubble !== false) {
       pendingTTSFallbackRef.current.set(fallbackKey, { text, duration });
     }
 
-    (window as any).electronAPI?.petTTS?.speak(text, opts).then((result: { ok?: boolean; requestId?: string; error?: string } | undefined) => {
-      if (result?.ok === true && result.requestId && pendingTTSFallbackRef.current.has(fallbackKey)) {
-        const fallback = pendingTTSFallbackRef.current.get(fallbackKey)!;
-        pendingTTSFallbackRef.current.delete(fallbackKey);
-        pendingTTSFallbackRef.current.set(result.requestId, fallback);
-        return;
+    // 使用 Tauri Channel 进行语音合成
+    const { channel, promise } = petTTS.speak(text, voice);
+
+    channel.onmessage = (event: TtsStreamEvent) => {
+      switch (event.event) {
+        case 'audio': {
+          const data = new Uint8Array(event.data ?? []);
+          audioPlayerRef.current?.pushChunk({
+            data,
+            sampleRate: event.sample_rate ?? 24000,
+            seq: event.seq ?? 0,
+            isFinal: event.isFinal ?? false,
+          });
+          break;
+        }
+        case 'finished': {
+          // TTS 完成 — 从 pending 追踪中移除
+          if (fallbackKey && pendingTTSFallbackRef.current.has(fallbackKey)) {
+            pendingTTSFallbackRef.current.delete(fallbackKey);
+          }
+          break;
+        }
+        case 'error': {
+          // TTS 错误 — 回退到气泡
+          if (fallbackKey && pendingTTSFallbackRef.current.has(fallbackKey)) {
+            const fallback = pendingTTSFallbackRef.current.get(fallbackKey)!;
+            pendingTTSFallbackRef.current.delete(fallbackKey);
+            showBubble(fallback.text, fallback.duration);
+          }
+          break;
+        }
       }
-      if (result?.ok === false && pendingTTSFallbackRef.current.has(fallbackKey)) {
-        const fallback = pendingTTSFallbackRef.current.get(fallbackKey)!;
-        pendingTTSFallbackRef.current.delete(fallbackKey);
-        showBubble(fallback.text, fallback.duration);
-      }
-    }).catch(() => {
+    };
+
+    // invoke 失败（网络/序列化错误）时回退
+    promise.catch(() => {
       if (pendingTTSFallbackRef.current.has(fallbackKey)) {
         const fallback = pendingTTSFallbackRef.current.get(fallbackKey)!;
         pendingTTSFallbackRef.current.delete(fallbackKey);
@@ -309,11 +300,20 @@ const App: React.FC = () => {
   }, []);
 
   const loadAIConfig = useCallback(() => {
-    const api = (window as any).electronAPI?.petAI;
-    return api?.getConfig?.().then((config: AIPlannerConfigSnapshot) => {
-      setAIConfig(config);
-      applyPlannerMode(config);
-      return config;
+    return petAI.getConfig().then((config) => {
+      // 将 Rust snake_case 映射到前端 camelCase
+      const mapped: AIPlannerConfigSnapshot = {
+        enabled: config.enabled,
+        mode: config.mode,
+        baseUrl: config.base_url,
+        apiKey: config.api_key,
+        model: config.model,
+        timeoutMs: config.timeout_ms,
+        fallbackToRule: config.fallback_to_rule,
+      };
+      setAIConfig(mapped);
+      applyPlannerMode(mapped);
+      return mapped;
     }).catch(() => null);
   }, [applyPlannerMode]);
 
@@ -330,17 +330,30 @@ const App: React.FC = () => {
   const saveAIConfig = useCallback(async () => {
     if (!aiConfig) return;
     setAIConfigStatus('Saving...');
-    const saved = await (window as any).electronAPI?.petAI?.setConfig(aiConfig);
-    setAIConfig(saved);
-    applyPlannerMode(saved);
+    // 将前端 camelCase 映射到 Rust snake_case
+    const configToSave = {
+      enabled: aiConfig.enabled,
+      mode: aiConfig.mode,
+      base_url: aiConfig.baseUrl,
+      api_key: aiConfig.apiKey,
+      model: aiConfig.model,
+      timeout_ms: aiConfig.timeoutMs,
+      fallback_to_rule: aiConfig.fallbackToRule,
+    };
+    await petAI.setConfig(configToSave as any);
+    applyPlannerMode(aiConfig);
     setAIConfigStatus('Saved');
   }, [aiConfig, applyPlannerMode]);
 
   const testAIConfig = useCallback(async () => {
     if (!aiConfig) return;
     setAIConfigStatus('Testing...');
-    const result = await (window as any).electronAPI?.petAI?.testConnection(aiConfig);
-    setAIConfigStatus(result?.ok ? 'Connection OK' : `Failed: ${result?.error || 'Unknown error'}`);
+    try {
+      await petAI.testConnection();
+      setAIConfigStatus('Connection OK');
+    } catch (err) {
+      setAIConfigStatus(`Failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
   }, [aiConfig]);
 
   const hasUnsavedAIConfig = Boolean(aiConfig && activeAIConfig && JSON.stringify(aiConfig) !== JSON.stringify(activeAIConfig));
@@ -369,11 +382,10 @@ const App: React.FC = () => {
   }, [settingsPosition]);
 
   useEffect(() => {
-    const api = (window as any).electronAPI;
     if (settingsOpen) {
       previousMousePassthroughRef.current = document.documentElement.dataset.mousePassthrough;
       document.documentElement.dataset.mousePassthrough = 'false';
-      api?.petWindow?.setIgnoreMouseEvents?.(false, { forward: true });
+      petWindow.setIgnoreMouseEvents(false).catch(() => {});
       return;
     }
 
@@ -381,7 +393,7 @@ const App: React.FC = () => {
     previousMousePassthroughRef.current = undefined;
     if (previous !== undefined) {
       document.documentElement.dataset.mousePassthrough = previous;
-      api?.petWindow?.setIgnoreMouseEvents?.(previous === 'true', { forward: true });
+      petWindow.setIgnoreMouseEvents(previous === 'true').catch(() => {});
     }
   }, [settingsOpen]);
 
@@ -394,7 +406,7 @@ const App: React.FC = () => {
       const onPet = document.elementFromPoint(event.clientX, event.clientY)?.closest?.('.rive-container');
       const shouldPassThrough = !insideSettings && !onPet;
       document.documentElement.dataset.mousePassthrough = String(shouldPassThrough);
-      (window as any).electronAPI?.petWindow?.setIgnoreMouseEvents?.(shouldPassThrough, { forward: true });
+      petWindow.setIgnoreMouseEvents(shouldPassThrough).catch(() => {});
     };
 
     window.addEventListener('pointermove', handlePointerMove, true);
@@ -408,9 +420,8 @@ const App: React.FC = () => {
       if (cancelled) return;
       setModels(loadedModels);
       setModelIndex((index) => Math.min(index, loadedModels.length - 1));
-      // Sync model names to tray menu
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (window as any).electronAPI?.petWindow?.setModelNames?.(loadedModels.map((m) => m.name));
+      // Sync model names to tray menu via Tauri
+      petWindow.updateModelNames(loadedModels.map((m) => m.name)).catch(() => {});
     });
 
     return () => {
@@ -418,10 +429,7 @@ const App: React.FC = () => {
     };
   }, [modelRevision]);
 
-  useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).electronAPI?.petWindow?.setCurrentModelIndex?.(modelIndex);
-  }, [modelIndex]);
+  // Note: model index sync removed — Tauri backend uses model_list for state.
 
   const handleClick = useCallback(() => {
     clearActionResetTimer();
@@ -459,14 +467,13 @@ const App: React.FC = () => {
         void loadAIConfig();
         break;
       case 'importModel':
-        // Import via IPC, trigger model reload on completion
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (window as any).electronAPI?.petModel?.import().then((result: any) => {
+        // Import via Tauri, trigger model reload on completion
+        petModel.importModel().then((result) => {
           if (result) {
             showBubble('Model imported! Reloading...', 1500);
             setModelRevision((v) => v + 1);
           }
-        });
+        }).catch(() => {});
         break;
       case 'refreshModels':
         showBubble('Model imported! Reloading...', 1500);
@@ -475,89 +482,62 @@ const App: React.FC = () => {
     }
   }, [loadAIConfig, models.length, showBubble]);
 
-  // Listen for IPC events from main process:
-  // - Tray menu actions → handleMenuAction / direct local actions
-  // - Adapter events → handlePetEvent
+  // Listen for Tauri events from the Rust backend:
+  // - "pet:event" from HTTP Adapter → handlePetEvent
+  // - "pet:action" from tray menu → handleMenuAction / direct local actions
   useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const api = (window as any).electronAPI;
     const cleanups: Array<() => void> = [];
 
-    if (api?.onPetEvent) {
-      cleanups.push(api.onPetEvent((event: unknown) => {
-        console.log('[IPC] Received pet event:', event);
-        handlePetEvent(event);
-      }));
-    }
+    // pet:event — adapter events
+    onPetEvent((eventPayload: unknown) => {
+      console.log('[IPC] Received pet event:', eventPayload);
+      handlePetEvent(eventPayload);
+    }).then(fn => cleanups.push(fn));
 
-    if (api?.onPetAction) {
-      cleanups.push(api.onPetAction((action: string, params?: unknown) => {
-        console.log(`[IPC] Received action: ${action}`, params);
+    // pet:action — tray menu actions
+    onPetAction((action: string, params?: Record<string, unknown>) => {
+      console.log(`[IPC] Received action: ${action}`, params);
 
-        // Handle size change (base: 520x760)
-        if (action.startsWith('resizePet:')) {
-          const scale = parseFloat(action.split(':')[1]);
-          if (!isNaN(scale)) {
-            document.documentElement.dataset.petScale = String(scale);
-          }
-          return;
+      // Handle size change (base: 520x760, scale separate field)
+      if (action === 'resizePet' && params?.scale !== undefined) {
+        document.documentElement.dataset.petScale = String(params.scale);
+        return;
+      }
+
+      // Handle mouse follow toggle
+      if (action === 'mouseFollow:toggle') {
+        const currentlyEnabled = document.documentElement.dataset.mouseFollow !== 'false';
+        const newEnabled = !currentlyEnabled;
+        document.documentElement.dataset.mouseFollow = String(newEnabled);
+        if (!newEnabled) {
+          // Signal PetStage to reset the pet's face to front
+          document.documentElement.dataset.resetPointer = 'now';
+          setAction('idle');
         }
+        return;
+      }
 
-        // Handle mouse follow toggle
-        if (action === 'mouseFollow:on' || action === 'mouseFollow:off') {
-          const enabled = action === 'mouseFollow:on';
-          document.documentElement.dataset.mouseFollow = String(enabled);
-          if (!enabled) {
-            // Signal PetStage to reset the pet's face to front
-            document.documentElement.dataset.resetPointer = 'now';
-            setAction('idle');
-          }
-          return;
-        }
+      // Handle mouse passthrough (tray menu "mouse_passthrough" sets it directly on Rust side)
+      // No action handler needed — set_ignore_cursor_events is called by tray handler directly.
 
-        if (action === 'mousePassthrough:on' || action === 'mousePassthrough:off') {
-          const enabled = action === 'mousePassthrough:on';
-          document.documentElement.dataset.mousePassthrough = String(enabled);
-          api.petWindow?.setIgnoreMouseEvents?.(enabled, { forward: true });
-          return;
-        }
+      // Route to menu handler if it looks like a menu action
+      if (action.startsWith('model:') ||
+          action === 'settings' ||
+          action === 'importModel' ||
+          action === 'refreshModels') {
+        handleMenuAction(action);
+        return;
+      }
 
-        // Route to menu handler if it looks like a menu action
-        if (action.startsWith('model:') ||
-            action === 'settings' ||
-            action === 'importModel' ||
-            action === 'refreshModels') {
-          handleMenuAction(action);
-          return;
-        }
+      clearActionResetTimer();
+      setAction(action);
+    }).then(fn => cleanups.push(fn));
 
-        clearActionResetTimer();
-        setAction(action);
-      }));
-    }
-
-    return () => cleanups.forEach((cleanup) => cleanup());
+    return () => cleanups.forEach((fn) => fn());
   }, [clearActionResetTimer, handleMenuAction, handlePetEvent, setAction]);
 
   // ── TTS Integration Test Harness ──────────────────────────────────
-  // Phase 2 temporary: exposes TtsTest for DevTools console testing.
-  // REMOVAL: Delete this block AND src/tts-test.ts in Phase 6.
-  // To test: cargo tauri dev → DevTools console → run:
-  //   window.__VIVIPET_TTS_TEST__.speak('Hello!')
-  //   window.__VIVIPET_TTS_TEST__.getConfig().then(c => { c.enabled = true; c.source = 'System'; window.__VIVIPET_TTS_TEST__.setConfig(c) })
-  //   window.__VIVIPET_TTS_TEST__.speak('After enabling TTS')
-  useEffect(() => {
-    let cancelled = false;
-    import('./tts-test').then(({ TtsTest }) => {
-      if (!cancelled) {
-        (window as any).__VIVIPET_TTS_TEST__ = TtsTest;
-        console.log('[TTS-Test] Harness ready. Run window.__VIVIPET_TTS_TEST__.speak() to test.');
-      }
-    }).catch((err) => {
-      console.warn('[TTS-Test] Failed to load test harness:', err);
-    });
-    return () => { cancelled = true; };
-  }, []);
+  // Phase 6: Removed — tests moved to real handleSpeech() flow.
   // ── End TTS Test Harness ──────────────────────────────────────────
 
   return (
