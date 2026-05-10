@@ -1,3 +1,6 @@
+import { petModel } from '../../tauri-adapter';
+import type { ModelConfigDTO } from '../../tauri-types';
+
 export type ModelType = 'rive';
 
 export interface ModelConfig {
@@ -82,44 +85,24 @@ export async function loadModelConfigs(): Promise<ModelConfig[]> {
     builtIn = FALLBACK_MODELS;
   }
 
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (window as any).electronAPI?.petModel?.indexBundledModels?.(
-      builtIn.map((model) => ({ id: model.id, name: model.name, path: model.path })),
-    );
-  } catch (err) {
-    console.warn('[ModelRegistry] Failed to index bundled models:', err);
-  }
-
-  // 2. Load user-imported models (if available via IPC)
+  // 2. Load user-imported models (via Tauri model_list)
   let userModels: ModelConfig[] = [];
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const remote = (window as any).electronAPI?.petModel;
-    if (remote?.listUserModels) {
-      const imported: Array<{
-        id: string;
-        name: string;
-        path: string;
-        window?: { width: number; height: number };
-        actions?: Record<string, ModelActionConfig>;
-        capabilities?: ModelCapabilities;
-      }>
-        = await remote.listUserModels();
-      userModels = imported.filter((m): m is typeof m & { id: string; name: string; path: string } =>
-        Boolean(m.id && m.name && m.path),
-      ).map((m) => ({
+    const remoteModels = await petModel.listModels();
+    userModels = remoteModels
+      .filter((m) => Boolean(m.id && m.name && m.path))
+      .map((m: ModelConfigDTO) => ({
         id: m.id,
         name: m.name,
         path: m.path,
         window: m.window,
-        canvas: m.window ? { width: m.window.width, height: m.window.height } : undefined,
-        actions: m.actions,
-        capabilities: m.capabilities,
+        canvas: m.canvas ?? (m.window ? { width: m.window.width, height: m.window.height } : undefined),
+        actions: m.actions as Record<string, ModelActionConfig> | undefined,
+        capabilities: m.capabilities as ModelCapabilities | undefined,
       }));
-    }
   } catch (err) {
-    console.warn('[ModelRegistry] Failed to list user models:', err);
+    // Model list may fail if models dir doesn't exist yet — not critical
+    console.warn('[ModelRegistry] Failed to list models via Tauri:', err);
   }
 
   // 3. Merge: user models override built-in models with same ID
