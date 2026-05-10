@@ -13,6 +13,11 @@ pub fn run() {
         .plugin(
             tauri_plugin_log::Builder::new()
                 .level(log::LevelFilter::Info)
+                .target(tauri_plugin_log::Target::new(
+                    tauri_plugin_log::TargetKind::LogDir {
+                        file_name: Some("vivipet.log".into()),
+                    },
+                ))
                 .build(),
         )
         .plugin(tauri_plugin_positioner::init())
@@ -27,8 +32,14 @@ pub fn run() {
         .setup(|app| {
             logging::init();
 
+            tracing::info!("ViviPet Tauri app starting");
+            tracing::warn!("This is a warning log message (Phase 1 test)");
+            tracing::error!("This is an error log message (Phase 1 test) — not an actual error");
+
             window::setup_window(app)?;
             tray::build_tray(app)?;
+
+            tracing::info!("ViviPet Tauri app setup complete");
 
             Ok(())
         })

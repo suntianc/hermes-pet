@@ -18,6 +18,21 @@ window.addEventListener('unhandledrejection', (e) => {
   if (errDiv) errDiv.textContent = (errDiv.textContent ? errDiv.textContent + '\n---\n' : '') + '[PROMISE] ' + msg;
 });
 
+// Tauri IPC bootstrap test — verify frontend can call Rust commands
+async function testTauriIPC(): Promise<void> {
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+
+    // Test 1: greet command (defined in commands/mod.rs)
+    const greeting = await invoke<string>('greet', { name: 'ViviPet' });
+    console.log('[Tauri IPC] greet command OK:', greeting);
+
+    console.log('[Tauri IPC] All bootstrap tests passed');
+  } catch (err) {
+    console.warn('[Tauri IPC] Bootstrap test failed (expected if not in Tauri):', err);
+  }
+}
+
 async function bootstrap(): Promise<void> {
   const baseUrl = window.location.href;
   if (baseUrl.startsWith('http')) {
@@ -32,6 +47,9 @@ async function bootstrap(): Promise<void> {
     const root = createRoot(container);
     root.render(<App />);
   }
+
+  // Run IPC test (non-blocking — doesn't prevent app from rendering)
+  testTauriIPC();
 }
 
 bootstrap().catch((err) => {
