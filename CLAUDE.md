@@ -25,11 +25,15 @@ This project uses Get Shit Done (GSD) workflow for structured planning and execu
 
 ```
 hermes-pet/
-├── apps/desktop/          ← Electron app (vivi-pet)
-├── packages/pet-action-dsl/  ← @hermes/pet-action-dsl (types-only DSL for composable actions)
-├── packages/shared/          ← @hermes/shared (PetActionType, Position, Size, WindowState, PetConfig)
-├── turbo.json               ← Build pipeline: build depends on ^build
-└── package.json             ← Root: yarn workspaces, delegates to desktop
+├── apps/desktop/              ← Tauri 2 desktop app (Rust + React + Rive)
+│   └── src-tauri/             ← Rust backend (Tauri 2 commands, state, plugins)
+│       ├── src/               ← Rust source: TTS, Adapter, Model, AI Planner, Commands
+│       ├── Cargo.toml         ← Rust dependencies
+│       └── tauri.conf.json    ← Tauri configuration (window, tray, updater, etc.)
+├── packages/pet-action-dsl/   ← @hermes/pet-action-dsl (types-only DSL for composable actions)
+├── packages/shared/           ← @hermes/shared (PetActionType, Position, Size, WindowState, PetConfig)
+├── turbo.json                 ← Build pipeline: build depends on ^build
+└── package.json               ← Root: yarn workspaces, delegates to desktop
 ```
 
 Workspace packages must be built before the desktop app (Turbo handles this via `dependsOn: ["^build"]`).
@@ -37,17 +41,14 @@ Workspace packages must be built before the desktop app (Turbo handles this via 
 ## Commands
 
 ```bash
-# Development (renderer + main process watch, from apps/desktop/)
+# Development (Tauri dev server with hot-reload)
 cd apps/desktop && npm run dev
 
-# Or individual processes
-npm run dev:renderer   # Vite dev server on :5173
-npm run dev:main       # tsc --watch for electron/ → dist/main/
+# Build (includes Rust compilation + Vite bundle)
+cd apps/desktop && npm run build
 
-# Build (from apps/desktop/)
-npm run build          # main process + renderer
-npm run build:main     # tsc electron/ → dist/main/
-npm run build:renderer # vite build → dist/renderer/
+# Build only the Vite frontend
+cd apps/desktop && npx vite build
 
 # Build shared packages (needed before desktop if changed)
 cd packages/shared && npm run build
@@ -57,13 +58,10 @@ cd packages/pet-action-dsl && npm run build
 yarn lint              # turbo run lint
 yarn clean             # turbo run clean
 
-# Run (after build)
-npm start              # electron .
-
-# Package for distribution (from apps/desktop/)
-npm run package        # npm run build && electron-builder --mac --publish never
-npm run package:win    # npm run build && electron-builder --win --publish never
-npm run package:all    # npm run build && electron-builder --mac --win --publish never
+# Rust commands (from apps/desktop/src-tauri/)
+cd apps/desktop/src-tauri && cargo check
+cd apps/desktop/src-tauri && cargo build
+cd apps/desktop/src-tauri && cargo test
 
 # Integration smoke test (app must be running)
 bash test-vivipet-agent-flow.sh
@@ -77,34 +75,32 @@ curl http://localhost:18765/adapter/capabilities
 
 ## Architecture Overview
 
-**Two-process Electron app** (Electron 41, sandboxed renderer via Vite). GitHub: `suntianc/ViviPet`.
+**Tauri 2 desktop app** (Rust + React + Rive). GitHub: `suntianc/ViviPet`.
 
-### 1. Main Process (`apps/desktop/electron/`)
-- `main.ts` — Entry: single-instance lock, protocol registration, creates window + tray + IPC + Adapter + TTS
-- `window.ts` — Frameless, transparent, always-on-top BrowserWindow (default 750×700, bottom-right anchored)
-- `preload.ts` — contextBridge exposing `window.electronAPI` (petWindow, petModel, **petTTS**, onPetAction, onPetEvent)
-- `ipc.ts` — IPC handlers (drag, resize, passthrough, model management, **TTS speak/stop/config/voices**)
-- `tray.ts` — System tray with Show/Hide, Always on Top, Mouse Passthrough, Size, Mouse Follow, **TTS toggle + source**, Switch Model, Import Model, Quit
-- `adapter/` — HTTP Adapter on `:18765`, accepts `POST /adapter` and `GET /adapter/capabilities`
-- `model-manager.ts` — Custom `vivipet-assets://` protocol, model import (.riv / .zip / file dialog), bundled model indexing
-- `ai-planner.ts` — AI behavior planner using OpenAI function calling (rule/ai/hybrid modes)
-- `action-index.ts` — Scans model files to auto-index motion groups and expression files
-- `app-state.ts` — Shared `isQuitting` flag for close-to-tray coordination
+### 1. Rust Backend (`apps/desktop/src-tauri/src/`)
+- **`main.rs`** — Entry point: Tauri builder, plugin registration, command registration
+- **`lib.rs`** — Module declarations and shared state initialization
+- **`window.rs`** — Window management (frameless, transparent, always-on-top, bottom-right anchored)
+- **`tray.rs`** — System tray with Show/Hide, Always on Top, Mouse Passthrough, Size, Mouse Follow, TTS toggle, Switch Model, Import Model, Quit
 - **`tts/`** — Full TTS module:
-  - `tts-manager.ts` — Queue-based TTS engine, text splitting (500 chars/chunk), provider dispatch
-  - `tts-config.ts` — Config persisted at `{userData}/tts-config.json`, three provider types (system/local/cloud), three request modes (preset/clone/instruct)
-  - `text-utils.ts` — Long text segmentation by sentence → comma → hard split
-  - `streamers/system-streamer.ts` — macOS `say` command (zero dependencies), edge-tts CLI
-  - `streamers/local-streamer.ts` — HTTP streaming to local TTS service, unified field mapping (Text/Voice/Model/Instruct)
-  - `streamers/cloud-streamer.ts` — OpenAI / ElevenLabs / Azure / custom API streaming
+  - `manager.rs` — Queue-based TTS engine, text splitting (500 chars/chunk), provider dispatch
+  - `config.rs` — Config persisted via tauri-plugin-store, three provider types (system/local/cloud), three request modes (preset/clone/instruct)
+  - `providers/system.rs` — macOS `say` command / Windows SAPI / Linux espeak-ng
+  - `providers/local.rs` — HTTP streaming to local TTS service
+  - `providers/cloud.rs` — OpenAI / ElevenLabs / Azure / custom API streaming
+- **`adapter.rs`** — Embedded axum HTTP server on port 18765 with graceful shutdown
+- **`model.rs`** — .riv file import, directory scanning, model registry
+- **`ai_planner.rs`** — OpenAI client with function calling (rule/ai/hybrid modes)
+- **`commands.rs`** — Tauri commands exposed to frontend via `@tauri-apps/api`
 
 ### 2. React Renderer (`apps/desktop/src/`)
+- **`tauri-adapter.ts`** — Abstraction layer wrapping `@tauri-apps/api` invoke/events, mirrors old `window.electronAPI` interface
 - `main.tsx` — Bootstrap: dynamically loads Rive WASM → renders `<App />`
-- `App.tsx` — Root component: model loading, IPC routing, **TTS vs bubble decision (mutually exclusive)**, applies Adapter pet events
-- `components/PetStage.tsx` — Canvas container, PetRenderer lifecycle, mouse tracking/drag/click, **lip sync mouth animation via isSpeaking + ttsAmplitude**
+- `App.tsx` — Root component: model loading, IPC routing, TTS vs bubble decision, applies Adapter pet events
+- `components/PetStage.tsx` — Canvas container, PetRenderer lifecycle, mouse tracking/drag/click, lip sync mouth animation via isSpeaking + ttsAmplitude
 - `components/SpeechBubble.tsx` — Inline text bubble above pet, supports `timed` and `tts-sync` modes
-- **`audio/streaming-player.ts`** — Web Audio API player, accumulates audio chunks → decodes → plays, real-time RMS amplitude analysis for lip sync
-- `stores/pet-store.ts` — PetStore singleton + `usePetStore()` hook (currentAction, actionRevision, bubble state, **isSpeaking, ttsState, ttsAmplitude, speechText**)
+- **`audio/streaming-player.ts`** — Web Audio API player, accumulates audio chunks from Tauri Channel → decodes → plays, real-time RMS amplitude analysis for lip sync
+- `stores/pet-store.ts` — PetStore singleton + `usePetStore()` hook (currentAction, actionRevision, bubble state, isSpeaking, ttsState, ttsAmplitude, speechText)
 - `features/pet-events/` — Renderer-side Adapter event schema, behavior planner, session manager
 - `features/pet/model-registry.ts` — Model config types, `loadModelConfigs()` (merges built-in models.json + user models via IPC)
 
@@ -129,6 +125,44 @@ curl http://localhost:18765/adapter/capabilities
 
 **Renderer abstraction**: `PetRenderer` interface with `RiveRenderer` implementation; `PetRendererType` also defines `spine`, `gif`, `vrm` for future renderer swaps.
 
+## IPC Model (Tauri Commands + Events)
+
+```
+Frontend (React/TypeScript)            Rust Backend
+─────────────────────────              ────────────
+@tauri-apps/api/core → invoke()  →  #[tauri::command] fn my_command()
+@tauri-apps/api/event → listen() ←  app_handle.emit("event-name", payload)
+@tauri-apps/api/core → Channel     →  Channel send() for streaming (audio chunks)
+```
+
+All IPC goes through `src/tauri-adapter.ts` which provides typed wrappers:
+- `tauriAdapter.invoke(command, args)` — Tauri command invocation
+- `tauriAdapter.listen(event, callback)` — Event listener registration
+- `tauriAdapter.getChannel()` — Creates a Tauri Channel for streaming
+
+## Event Pipeline
+
+```
+External agent hook (curl POST /adapter)
+  → Rust axum server (:18765)
+  → normalize + validate event
+  → tauri::Emitter::emit("pet:event", payload)
+  → App.tsx listener (via @tauri-apps/api/event)
+  → applyPetStateEvent(event)             ← animation state
+  → if event.text/message → handleSpeech(text)
+  → petStore.setAction(type) → actionRevision++
+  → PetStage useEffect → RiveRenderer.playAction()
+  → forceResetPose() → set SM state input → scheduleIdle()
+
+TTS flow:
+  → handleSpeech checks event.tts and current TTS config
+  → tts enabled → invoke("tts_speak", { text, options })
+  → Rust TTS manager queues → provider streams → Channel send audio chunks
+  → frontend Channel listener → StreamingAudioPlayer → Web Audio API playback
+  → real-time RMS → PetStore → RiveRenderer mouth animation (mouth_open input)
+  → tts disabled / error → SpeechBubble fallback
+```
+
 ## Model System
 
 ### Directory Structure
@@ -141,7 +175,7 @@ apps/desktop/public/
 ### Loading (dual-tier)
 1. **Primary**: `public/assets/models/models.json` at runtime via `fetch()`
 2. **Fallback**: `FALLBACK_MODELS` in `model-registry.ts`
-3. **User models**: Merged via IPC `petModel.listUserModels()` from `userData/models/`
+3. **User models**: Merged via `invoke("list_user_models")` from `userData/models/`
 
 ### Action Resolution
 ```
@@ -157,36 +191,12 @@ Adapter phases: `idle`, `thinking`, `speaking`, `tool:start`, `tool:success`, `t
 
 Internal actions: `idle`, `thinking`, `speaking`, `happy`, `success`, `error`, `confused`, `angry`, `searching`, `reading`, `coding`, `terminal`, `sleep`, `wake`
 
-## Event Pipeline
-
-```
-External agent hook (curl POST /adapter)
-  → adapter/server.ts
-  → normalizeAgentEvent() → toPetStateEvent()
-  → pet:event IPC → App.tsx onPetEvent listener
-  → applyPetStateEvent(event)             ← animation state
-  → if event.text/message → handleSpeech(text) ← per-event `tts` switch + current TTS config; provider failure falls back to bubble
-  → petStore.setAction(type) → actionRevision++
-  → PetStage useEffect → RiveRenderer.playAction()
-  → forceResetPose() → set SM state input → scheduleIdle()
-
-Tray menu / click events still use local `pet:action` handlers.
-
-TTS flow:
-  → handleSpeech checks event.tts and current petTTS config
-  → tts true + enabled config → petTTS.speak(text, options) → IPC pet:tts:speak
-  → tts false / disabled config / provider error → SpeechBubble fallback
-  → TTSManager.queue → stream/providers → audio chunks
-  → IPC pet:tts:audioChunk → StreamingAudioPlayer → Web Audio API playback
-  → IPC pet:tts:state (playing/idle/error) → PetStore → PetStage lip sync
-```
-
 ## TTS System
 
 ### Three Providers
 | Source | Type | Dependencies |
 |--------|------|-------------|
-| `system` | macOS `say` command | Zero dependencies |
+| `system` | macOS `say` command / Windows SAPI / Linux espeak-ng | Zero dependencies |
 | `local` | HTTP streaming to self-hosted TTS | Running service |
 | `cloud` | OpenAI / ElevenLabs / Azure API | API key + network |
 
@@ -197,47 +207,36 @@ TTS flow:
 | `clone` | `{Text, Model}` | Voice cloning (reference audio pre-configured) |
 | `instruct` | `{Text, Instruct, Model}` | Style instruction |
 
-### Stream Flow
-```
-App.tsx handleSpeech()
-  → IPC pet:tts:speak (renderer → main)
-  → TTSManager.queue (FIFO queue strategy)
-  → text splitting (maxChars per chunk, default 500)
-  → provider stream (AsyncGenerator<AudioChunk>)
-  → IPC pet:tts:audioChunk (Uint8Array chunks, ~16KB each)
-  → StreamingAudioPlayer accumulate + decodeAudioData + play
-  → real-time RMS → PetStore → RiveRenderer mouth animation (mouth_open input)
-```
-
-Configuration persisted at `{userData}/tts-config.json`. Configurable via tray menu: Right-click → TTS Settings.
-
 ## CI/CD
 
 - **`ci.yml`** — Push/PR to main: install → build shared packages → build desktop → upload artifacts (macOS, Node 20)
-- **`release.yml`** — On `v*` tags: matrix build (mac-arm64, mac-x64, linux, windows) → electron-builder → draft GitHub Release
+- **`release.yml`** — On `v*` tags: matrix build (mac-arm64, mac-x64, linux, windows) → `cargo tauri build` → draft GitHub Release
 
 ## Important Files
 
 | File | Why it matters |
 |------|---------------|
-| `apps/desktop/electron/main.ts` | Full startup sequence, protocol init, TTS init |
-| `apps/desktop/electron/preload.ts` | API surface between main ↔ renderer (petWindow, petModel, petTTS, onPetAction, onPetEvent) |
-| `apps/desktop/electron/ipc.ts` | All IPC handlers including TTS (speak, stop, getConfig, setConfig, getVoices) |
-| `apps/desktop/electron/adapter/` | Built-in Agent Adapter (:18765, /adapter and /adapter/capabilities). 4 files: server, protocol, normalize, policy |
-| `apps/desktop/electron/ai-planner.ts` | AI behavior planner using OpenAI function calling (rule/ai/hybrid modes) |
-| `apps/desktop/electron/tts/tts-manager.ts` | TTS engine core: queue, provider dispatch, text splitting, state broadcast |
-| `apps/desktop/electron/tts/tts-config.ts` | Config types, persistence, three request modes |
-| `apps/desktop/electron/tray.ts` | Tray menu with dynamic model list, TTS toggle/source, size, mouse follow |
+| `apps/desktop/src-tauri/src/main.rs` | Tauri 2 app entry — plugin registration, window/tray init |
+| `apps/desktop/src-tauri/src/lib.rs` | Module structure, shared state |
+| `apps/desktop/src-tauri/src/commands.rs` | All Tauri commands exposed to frontend |
+| `apps/desktop/src-tauri/src/tts/` | Rust TTS engine: manager, config, 3 providers |
+| `apps/desktop/src-tauri/src/adapter.rs` | Embedded axum HTTP server (:18765) |
+| `apps/desktop/src-tauri/src/model.rs` | .riv file import, directory scanning, registry |
+| `apps/desktop/src-tauri/src/ai_planner.rs` | OpenAI function calling, rule/ai/hybrid modes |
+| `apps/desktop/src-tauri/src/tray.rs` | System tray with dynamic model list |
+| `apps/desktop/src-tauri/src/window.rs` | Frameless, transparent, always-on-top window |
+| `apps/desktop/src-tauri/tauri.conf.json` | App config: window, tray, updater, plugins, bundle |
+| `apps/desktop/src/tauri-adapter.ts` | Frontend IPC abstraction layer |
 | `apps/desktop/src/App.tsx` | Event routing, TTS vs bubble decision, Adapter event application |
 | `apps/desktop/src/audio/streaming-player.ts` | Web Audio API player with real-time amplitude analysis |
 | `apps/desktop/src/components/PetStage.tsx` | Canvas, mouse events, renderer lifecycle, eye tracking, lip sync |
 | `apps/desktop/src/components/SpeechBubble.tsx` | Speech bubble with timed/tts-sync modes |
 | `apps/desktop/src/stores/pet-store.ts` | State management (actions, bubbles, TTS state, lip sync amplitude) |
-| `apps/desktop/src/features/pet/RiveRenderer.ts` | Rive engine: loads .riv, SM input management, lip sync, mouse follow, idle return |
+| `apps/desktop/src/features/pet/RiveRenderer.ts` | Rive engine: loads .riv, SM input management, lip sync, mouse follow |
 | `apps/desktop/src/features/pet/rive-inputs.ts` | Rive state machine input constants and RiveStateValue type |
-| `apps/desktop/src/features/pet/PetRenderer.ts` | Renderer abstraction interface (designed for future spine/gif/vrm renderers) |
+| `apps/desktop/src/features/pet/PetRenderer.ts` | Renderer abstraction interface |
 | `apps/desktop/src/features/pet/model-registry.ts` | Model config types, merging built-in + user models |
 | `apps/desktop/vite.config.mts` | Build config, aliases (`@`, `@pet-action-dsl`, `@shared`), publicDir |
-| `apps/desktop/electron-builder.yml` | Packaging config (macOS dmg/zip, Windows nsis, Linux AppImage/deb) |
+| `apps/desktop/src-tauri/Cargo.toml` | Rust dependencies |
 | `packages/pet-action-dsl/` | Types-only DSL for composable pet actions (motion, expression, bubble, speak, moveTo, etc.) |
 | `packages/shared/` | Shared types: PetActionType (20 types), Position, Size, WindowState, PetConfig |
