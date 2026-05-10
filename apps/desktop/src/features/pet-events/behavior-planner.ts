@@ -1,3 +1,4 @@
+import { petAI } from '../../tauri-adapter';
 import { BehaviorContext } from './behavior-context';
 import { BehaviorPlan, composeBehaviorPlan } from './behavior-plan';
 import { PetStateEvent } from './pet-event-schema';
@@ -37,20 +38,29 @@ export class AIBehaviorPlanner implements BehaviorPlanner {
 
   async plan(event: PetStateEvent, context: BehaviorContext): Promise<BehaviorPlan> {
     const rulePlan = await this.fallback.plan(event, context);
-    const api = (window as any).electronAPI?.petAI;
-    if (!api?.plan) return rulePlan;
 
     const startedAt = performance.now();
-    const result = await api.plan({ event, context, rulePlan });
-    if (result?.ok && isBehaviorPlan(result.plan)) {
-      this.onTrace?.({ source: 'ai', elapsedMs: Math.round(performance.now() - startedAt), plan: result.plan });
-      return result.plan;
+    try {
+      const result = await petAI.plan({
+        event: { action: event.action, mode: event.mode, text: event.text, message: event.message },
+        context: { visiblePose: context.visiblePose, recentEvents: [] },
+      });
+      if (result?.ok && result.plan && isBehaviorPlan(result.plan)) {
+        this.onTrace?.({ source: 'ai', elapsedMs: Math.round(performance.now() - startedAt), plan: result.plan });
+        return result.plan;
+      }
+      this.onTrace?.({
+        source: 'fallback',
+        elapsedMs: Math.round(performance.now() - startedAt),
+        error: result?.error || 'Invalid AI planner result',
+      });
+    } catch (err) {
+      this.onTrace?.({
+        source: 'fallback',
+        elapsedMs: Math.round(performance.now() - startedAt),
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
-    this.onTrace?.({
-      source: 'fallback',
-      elapsedMs: Math.round(performance.now() - startedAt),
-      error: result?.error || 'Invalid AI planner result',
-    });
     return rulePlan;
   }
 }

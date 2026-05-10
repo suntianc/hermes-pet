@@ -223,3 +223,23 @@ export function onModelImported(callback: (payload: { id: string; name: string }
     callback(event.payload);
   });
 }
+
+// ── 工具函数 ──────────────────────────────────────────────────────────
+
+/**
+ * 将 snake_case 对象的键递归转换为 camelCase
+ * 用于将 Rust 后端返回的 snake_case JSON 转换为前端预期的 camelCase
+ */
+export function snakeToCamel<T>(obj: unknown): T {
+  if (obj === null || obj === undefined) return obj as T;
+  if (Array.isArray(obj)) return obj.map(snakeToCamel) as unknown as T;
+  if (typeof obj === 'object') {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+      const camelKey = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+      result[camelKey] = snakeToCamel(value);
+    }
+    return result as T;
+  }
+  return obj as T;
+}
