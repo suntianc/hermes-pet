@@ -536,10 +536,6 @@ const App: React.FC = () => {
     return () => cleanups.forEach((fn) => fn());
   }, [clearActionResetTimer, handleMenuAction, handlePetEvent, setAction]);
 
-  // ── TTS Integration Test Harness ──────────────────────────────────
-  // Phase 6: Removed — tests moved to real handleSpeech() flow.
-  // ── End TTS Test Harness ──────────────────────────────────────────
-
   return (
     <div style={{
       width: '100%',
