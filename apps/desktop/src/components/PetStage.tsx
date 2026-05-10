@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { PlayActionOptions } from '../features/pet/PetRenderer';
 import { RiveRenderer } from '../features/pet/RiveRenderer';
 import { ModelConfig } from '../features/pet/model-registry';
+import { petWindow, getLastMousePosition } from '../tauri-adapter';
 
 interface PetStageProps {
   currentAction: string;
@@ -63,7 +64,7 @@ export const PetStage: React.FC<PetStageProps> = ({
     if (mousePassthroughRef.current === enabled) return;
     mousePassthroughRef.current = enabled;
     document.documentElement.dataset.mousePassthrough = String(enabled);
-    window.electronAPI?.petWindow.setIgnoreMouseEvents(enabled, { forward: true });
+    petWindow.setIgnoreMouseEvents(enabled).catch(() => {});
   };
 
   const isPointOnPet = (clientX: number, clientY: number) => {
@@ -122,13 +123,6 @@ export const PetStage: React.FC<PetStageProps> = ({
       }
     };
   }, [models]);
-
-  useEffect(() => {
-    const model = models[modelIndex];
-    if (!model) return;
-
-    window.electronAPI?.petModel?.setCurrent?.(model.id);
-  }, [modelIndex, models]);
 
   useEffect(() => {
     if (!rendererRef.current) return;
@@ -223,24 +217,19 @@ export const PetStage: React.FC<PetStageProps> = ({
       lastMouseFollowEnabled = enabled;
     };
 
-    const updateFocus = async () => {
+    const updateFocus = () => {
       if (!isMouseFollowEnabled()) return;
       if (stopped || tracking || isDraggingRef.current) return;
 
       tracking = true;
       try {
-        const [cursor, windowPosition] = await Promise.all([
-          window.electronAPI?.petWindow.getCursorScreenPoint(),
-          window.electronAPI?.petWindow.getPosition(),
-        ]);
+        const cursor = getLastMousePosition();
         const canvas = rendererRef.current?.view;
-        if (!cursor || !windowPosition || !canvas || stopped) return;
+        if (!canvas || stopped) return;
 
         const rect = canvas.getBoundingClientRect();
-        const clientX = cursor.x - windowPosition.x;
-        const clientY = cursor.y - windowPosition.y;
-        const canvasX = ((clientX - rect.left) / rect.width) * canvas.width;
-        const canvasY = ((clientY - rect.top) / rect.height) * canvas.height;
+        const canvasX = ((cursor.x - rect.left) / rect.width) * canvas.width;
+        const canvasY = ((cursor.y - rect.top) / rect.height) * canvas.height;
 
         rendererRef.current?.lookAt(canvasX, canvasY);
       } finally {
@@ -276,20 +265,15 @@ export const PetStage: React.FC<PetStageProps> = ({
     let stopped = false;
     let checking = false;
 
-    const updatePassthroughFromCursor = async () => {
+    const updatePassthroughFromCursor = () => {
       if (stopped || checking || isDraggingRef.current) return;
 
       checking = true;
       try {
-        const [cursor, windowPosition] = await Promise.all([
-          window.electronAPI?.petWindow.getCursorScreenPoint(),
-          window.electronAPI?.petWindow.getPosition(),
-        ]);
-        if (!cursor || !windowPosition || stopped) return;
+        const cursor = getLastMousePosition();
+        if (stopped) return;
 
-        const clientX = cursor.x - windowPosition.x;
-        const clientY = cursor.y - windowPosition.y;
-        const onPet = isPointOnPet(clientX, clientY);
+        const onPet = isPointOnPet(cursor.x, cursor.y);
 
         if (onPet) {
           setMousePassthrough(false);
