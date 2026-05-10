@@ -5,7 +5,16 @@ export default defineConfig({
   root: 'src',
   base: './',
   publicDir: path.resolve(__dirname, 'public'),
+  clearScreen: false,
+  server: {
+    port: 1420,
+    strictPort: true,
+  },
+  envPrefix: ['VITE_', 'TAURI_'],
   build: {
+    target: process.env.TAURI_PLATFORM === 'windows' ? 'chrome105' : 'safari14',
+    minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
+    sourcemap: !!process.env.TAURI_DEBUG,
     outDir: '../dist/renderer',
     emptyOutDir: true,
     copyPublicDir: true,
@@ -16,8 +25,5 @@ export default defineConfig({
       '@pet-action-dsl': path.resolve(__dirname, '../../packages/pet-action-dsl/src'),
       '@shared': path.resolve(__dirname, '../../packages/shared/src'),
     },
-  },
-  server: {
-    port: 5173,
   },
 });

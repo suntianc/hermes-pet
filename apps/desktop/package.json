@@ -1,24 +1,20 @@
 {
   "name": "vivi-pet",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "AI-driven Live2D desktop companion",
   "author": "Hermes Team <team@vivipet.app>",
   "repository": "suntianc/ViviPet",
-  "main": "dist/main/main.js",
+  "main": "",
   "scripts": {
-    "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
-    "dev:main": "tsc -p tsconfig.main.json --watch",
+    "dev": "tauri dev",
     "dev:renderer": "vite",
-    "build": "npm run build:main && npm run build:renderer",
-    "build:main": "tsc -p tsconfig.main.json",
+    "build": "tauri build",
     "build:renderer": "vite build",
-    "start": "electron .",
-    "lint": "eslint src --ext .ts,.tsx",
-    "package": "npm run build && electron-builder --mac --publish never",
-    "package:win": "npm run build && electron-builder --win --publish never",
-    "package:all": "npm run build && electron-builder --mac --win --publish never"
+    "preview": "vite preview",
+    "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2",
     "@rive-app/canvas": "^2.37.5",
     "electron-log": "^5.1.7",
     "openai": "^6.36.0",
@@ -26,6 +22,7 @@
     "react-dom": "^19.2.3"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2",
     "@types/node": "^20.14.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
