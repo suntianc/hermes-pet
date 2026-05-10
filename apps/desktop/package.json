@@ -4,12 +4,10 @@
   "description": "AI-driven Live2D desktop companion",
   "author": "Hermes Team <team@vivipet.app>",
   "repository": "suntianc/ViviPet",
-  "main": "",
+  "type": "module",
   "scripts": {
     "dev": "tauri dev",
-    "dev:renderer": "vite",
     "build": "tauri build",
-    "build:renderer": "vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext .ts,.tsx"
   },
@@ -17,16 +15,13 @@
     "@rive-app/canvas": "^2.37.5",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-updater": "^2.10.1",
-    "openai": "^6.36.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
-    "@types/node": "^20.14.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "concurrently": "^8.2.2",
     "typescript": "^5.5.2",
     "vite": "^5.3.1"
   }
