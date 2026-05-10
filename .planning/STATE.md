@@ -1,7 +1,7 @@
 # STATE.md — Hermes DeskPet
 
-**Status:** Milestone 2 — Electron → Tauri 2 + Rust Migration
-**Current Phase:** Roadmapping — Phase structure defined, awaiting execution
+**Status:** Milestone 2 — Tauri Migration | Phase 1 Context Gathered
+**Current Phase:** Foundation — Tauri 2 scaffold, window, tray, logging, single instance
 
 ---
 
@@ -19,16 +19,16 @@
 | Item | Value |
 |------|-------|
 | Milestone | 2 — Tauri Migration |
-| Current Phase | Roadmap defined (8 phases, 25 requirements mapped) |
+| Current Phase | Phase 1: Foundation — context gathered |
 | Current Plan | — |
-| Status | Not started — awaiting roadmap approval |
+| Status | Ready for planning |
 | Progress | 0/25 requirements complete |
 
 ### Phase Snapshot
 
 | Phase | Status | Requirements | Ready For |
 |-------|--------|-------------|-----------|
-| 1 — Foundation | Not started | FND-01~06 | Plan: Phase 1 |
+| 1 — Foundation | Context gathered (14 decisions) | FND-01~05 (06 deferred) | Plan: Phase 1 |
 | 2 — TTS Engine | Not started | TTS-01~05 | Blocked by Phase 1 |
 | 3 — HTTP Adapter | Not started | ADP-01~02 | Blocked by Phase 1 |
 | 4 — Model Management | Not started | MOD-01~02 | Blocked by Phase 1 |
@@ -57,8 +57,8 @@
 | # | Decision | Rationale |
 |---|----------|-----------|
 | D-01 | 8-phase structure with parallelizable Phases 2-4 | TTS/Adapter/Model have no interdependencies; parallel execution possible |
-| D-02 | CI/CD in Phase 1 (Foundation) | Research P-03 requires cross-platform CI for TTS testing across all platforms |
-| D-03 | FND-06 moved from Phase 7 → Phase 1 | Cross-platform CI needed early to validate TTS/signing work in later phases |
+| D-02 | CI/CD deferred from Phase 1 | User decision — Phase 1 focuses on local dev only |
+| D-03 | FND-06 moved back to later phase | CI/CD will be added in a future phase |
 | D-04 | DST-01 (updater UI) and signing separate from CLN-01 | Cleanup is structural (remove Electron); distribution is additive (build artifacts) |
 | D-05 | Phase 6 depends on Phases 2-5 | Frontend adapter can't be E2E tested without all Rust backends complete |
 | D-06 | Horizontal layers approach | Build complete backend layers first, connect frontend at end |
@@ -85,17 +85,18 @@
 
 ### Last Session
 
-- Milestone 2 initialized with research (STACK, FEATURES, ARCHITECTURE, PITFALLS, SUMMARY)
-- 25 v1 requirements defined across 8 categories (FND, TTS, ADP, AI, MOD, IPC, DST, CLN)
-- Roadmap created with 8 phases matching research recommendations
-- All 25 requirements mapped with 100% coverage
+- Phase 1 (Foundation) context discussion completed
+- 4 gray areas discussed: Monorepo strategy, Window persistence, Tray menu, CI/CD
+- 14 implementation decisions captured in CONTEXT.md
+- CI/CD (FND-06) deferred — Phase 1 focus is local development
+- See `01-foundation/01-CONTEXT.md` for full decisions
 
 ### Next Action
 
-Approve ROADMAP.md, then `/gsd-plan-phase 1` to begin Foundation phase planning.
+Plan Phase 1: Foundation. Move to planning based on captured context.
 
 ```
-Phase 1: Foundation → cargo tauri dev, frameless window, tray, logging, single instance, CI/CD
+Phase 1: Foundation → cargo tauri dev, frameless window, tray, logging, single instance (CI/CD deferred)
 Phase 2: TTS → system/local/cloud providers, queue, Channel streaming
 Phase 3: Adapter → axum :18765, graceful shutdown
 Phase 4: Model → import, walkdir scan, registry
@@ -107,4 +108,4 @@ Phase 8: Cleanup → remove all Electron/Node.js
 
 ---
 
-*Last updated: 2026-05-09 after Milestone 2 roadmap creation*
+*Last updated: 2026-05-09 after Phase 1 context discussion*
