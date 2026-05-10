@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use crate::tts::config::{AudioFormat, TTSConfig, TTSSpeakOptions};
+use crate::tts::config::{AudioFormat, TTSConfig, TTSProviderType, TTSSpeakOptions};
 use crate::tts::queue::TextChunk;
 
 /// An audio chunk yielded by a TTS provider's synthesis stream
@@ -42,7 +42,16 @@ pub trait TtsProvider: Send + Sync {
     }
 }
 
-// Submodules — activated in Plan 02
-// pub mod system;   // Plan 02
-// pub mod local;    // Plan 02
-// pub mod cloud;    // Plan 02
+pub mod cloud;
+pub mod local;
+pub mod system;
+
+/// Create a TTS provider instance by type
+pub fn create_provider(provider_type: &TTSProviderType) -> Option<Box<dyn TtsProvider>> {
+    match provider_type {
+        TTSProviderType::System => Some(Box::new(system::SystemProvider)),
+        TTSProviderType::Local => Some(Box::new(local::LocalProvider)),
+        TTSProviderType::Cloud => Some(Box::new(cloud::CloudProvider)),
+        TTSProviderType::None => None,
+    }
+}
