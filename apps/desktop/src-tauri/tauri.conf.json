@@ -4,10 +4,10 @@
   "version": "0.2.0",
   "identifier": "com.vivipet.app",
   "build": {
-    "frontendDist": "../dist",
+    "frontendDist": "../dist/renderer",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build:renderer",
-    "beforeDevCommand": "npm run dev:renderer"
+    "beforeBuildCommand": "vite build",
+    "beforeDevCommand": "vite"
   },
   "app": {
     "windows": [
@@ -59,13 +59,13 @@
   "plugins": {
     "updater": {
       "active": true,
-      "dialog": false,
+      "dialog": "passive",
       "pubkey": "TODO_ADD_YOUR_PUBKEY_HERE",
       "endpoints": [
         "https://releases.vivipet.app/{{target}}/{{current_version}}"
       ],
       "windows": {
-        "installMode": "currentUser"
+        "installMode": "passive"
       }
     }
   }
