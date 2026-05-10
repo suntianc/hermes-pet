@@ -10,6 +10,7 @@ release/
 apps/dist/
 apps/desktop/dist/
 apps/desktop/release/
+apps/desktop/src-tauri/target/
 
 # Logs
 *.log
