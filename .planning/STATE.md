@@ -2,21 +2,21 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: TTS Engine — system/local/cloud providers, Channel streaming, 5 Tauri commands
+current_phase: Frontend IPC Migration — remove preload/ipc, verify build
 status: completed
-last_updated: "2026-05-10T08:02:18.614Z"
+last_updated: "2026-05-11T10:30:00.000Z"
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 17
-  completed_plans: 14
-  percent: 82
+  completed_plans: 15
+  percent: 88
 ---
 
 # STATE.md — Hermes DeskPet
 
-**Status:** Milestone 2 — Tauri Migration | Phase 2 TTS Engine Complete
-**Current Phase:** TTS Engine — system/local/cloud providers, Channel streaming, 5 Tauri commands
+**Status:** Milestone 2 — Tauri Migration | Phase 6: Frontend IPC Migration Complete
+**Current Phase:** Frontend IPC Migration — remove preload/ipc, verify build
 
 ---
 
@@ -34,10 +34,10 @@ progress:
 | Item | Value |
 |------|-------|
 | Milestone | 2 — Tauri Migration |
-| Current Phase | Phase 3: HTTP Adapter |
+| Current Phase | Phase 6: Frontend IPC Migration |
 | Current Plan | 1/1 complete |
 | Status | Complete |
-| Progress | 7/25 requirements complete |
+| Progress | 10/25 requirements complete |
 
 ### Phase Snapshot
 
@@ -48,7 +48,7 @@ progress:
 | 3 — HTTP Adapter | **Complete** | ADP-01~02 ✅ | Verified |
 | 4 — Model Management | Not started | MOD-01~02 | Ready to plan |
 | 5 — AI Planner | Not started | AI-01~02 | Blocked by Phase 4 |
-| 6 — Frontend IPC Migration | Not started | IPC-01~03 | Blocked by Phases 2-5 |
+| 6 — Frontend IPC Migration | **Complete** | IPC-01~03 ✅ | Verified |
 | 7 — Distribution | Not started | DST-01~04 | Blocked by Phase 6 |
 | 8 — Cleanup | Not started | CLN-01 | Blocked by Phase 7 |
 
@@ -59,12 +59,12 @@ progress:
 | Metric | Current | Target |
 |--------|---------|--------|
 | Requirements mapped | 25/25 ✓ | 100% |
-| Requirements complete | 7/25 | 28% |
+| Requirements complete | 10/25 | 40% |
 | Phases defined | 8 | 8 |
-| Phases complete | 3/8 | 37.5% |
-| Electron backend files remaining | ~15 | 0 |
-| Rust backend files to write | 0 | ~25 |
-| Rust backend files written | ~20 | <25 |
+| Phases complete | 6/8 | 75% |
+| Electron IPC files removed | 2 (preload.ts + ipc.ts) | 0 remaining |
+| Frontend Electron deps removed | 3 (electron, electron-log, electron-builder) | 0 |
+| vite build | Pass ✓ | 0 errors |
 
 ---
 
@@ -103,17 +103,20 @@ progress:
 
 ### Last Session
 
-- Phase 3 (HTTP Adapter) execution completed
-- 1 plan executed: axum server, routes, lifecycle, wiring
-- 4 Rust source files created (adapter/ module)
-- 3 Rust source files modified (lib.rs, state.rs, error.rs)
-- 2 requirements satisfied (ADP-01, ADP-02)
-- 3 deviations: tokio-util feature, App::run() returns unit, State borrow lifetime
-- 9 git commits on branch `phase-03-http-adapter`
+- Phase 6 (Frontend IPC Migration) execution completed
+- 6 commits on branch `phase-03-http-adapter`
+- 3 Electron files removed: preload.ts, ipc.ts, tts-test.ts
+- 3 Electron dependencies removed from package.json
+- 3 requirements satisfied (IPC-01, IPC-02, IPC-03)
+- 0 deviations — plan executed exactly as specified
+- tauri-adapter.ts and tauri-types.ts already existed (from earlier phases)
+- All frontend components confirmed to use @tauri-apps/api via tauri-adapter.ts
+- vite build passes with 56 modules, 0 errors
+- VERIFICATION.md created with full E2E checklist
 
 ### Next Action
 
-Proceed to Phase 4: Model Management (.riv model management).
+Proceed to Phase 7: Distribution (updater, signing, .dmg/.msi/.AppImage).
 
 ```
 Phase 1: Foundation → cargo tauri dev, frameless window, tray, logging, single instance (CI/CD deferred) ✅
@@ -121,11 +124,11 @@ Phase 2: TTS → system/local/cloud providers, queue, Channel streaming ✅
 Phase 3: Adapter → axum :18765, graceful shutdown ✅
 Phase 4: Model → import, walkdir scan, registry
 Phase 5: AI → reqwest OpenAI, function calling, rule/ai/hybrid modes
-Phase 6: IPC → tauri-adapter.ts, migrate components, remove preload
+Phase 6: IPC → tauri-adapter.ts, migrate components, remove preload ✅
 Phase 7: Distribution → updater, signing, .dmg/.msi/.AppImage
 Phase 8: Cleanup → remove all Electron/Node.js
 ```
 
 ---
 
-*Last updated: 2026-05-10 after Phase 3 HTTP Adapter execution*
+*Last updated: 2026-05-11 after Phase 6 Frontend IPC Migration execution*

@@ -39,9 +39,9 @@
 
 ### Frontend IPC Migration
 
-- [ ] **IPC-01**: 创建 `src/tauri-adapter.ts` 抽象层，镜像旧 `window.electronAPI` 接口
-- [ ] **IPC-02**: 所有前端组件（App.tsx, PetStage, SpeechBubble, etc.）从 `window.electronAPI` 切换到 `@tauri-apps/api`
-- [ ] **IPC-03**: 移除 preload.ts、全部 `window.electronAPI` 引用、electron IPC 相关类型
+- [x] **IPC-01**: 创建 `src/tauri-adapter.ts` 抽象层，镜像旧 `window.electronAPI` 接口
+- [x] **IPC-02**: 所有前端组件（App.tsx, PetStage, SpeechBubble, etc.）从 `window.electronAPI` 切换到 `@tauri-apps/api`
+- [x] **IPC-03**: 移除 preload.ts、全部 `window.electronAPI` 引用、electron IPC 相关类型
 
 ### Distribution
 
@@ -99,9 +99,9 @@
 | MOD-02 | Phase 4 | Pending |
 | AI-01 | Phase 5 | Pending |
 | AI-02 | Phase 5 | Pending |
-| IPC-01 | Phase 6 | Pending |
-| IPC-02 | Phase 6 | Pending |
-| IPC-03 | Phase 6 | Pending |
+| IPC-01 | Phase 6 | Complete ✅ |
+| IPC-02 | Phase 6 | Complete ✅ |
+| IPC-03 | Phase 6 | Complete ✅ |
 | DST-01 | Phase 7 | Pending |
 | DST-02 | Phase 7 | Pending |
 | DST-03 | Phase 7 | Pending |
