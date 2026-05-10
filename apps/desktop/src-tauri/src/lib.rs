@@ -6,6 +6,7 @@ mod adapter;
 mod commands;
 mod error;
 mod logging;
+mod models;
 mod state;
 mod tray;
 mod tts;
@@ -33,6 +34,8 @@ pub fn run() {
             });
         }))
         .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .manage(Mutex::new(state::AppState::new()))
         .setup(|app| {
             logging::init();
@@ -42,6 +45,11 @@ pub fn run() {
             // Load persisted TTS config from tauri-plugin-store
             if let Err(e) = load_tts_config(app) {
                 tracing::warn!("Could not load TTS config from store: {e}");
+            }
+
+            // Ensure models directory exists on startup
+            if let Err(e) = models::get_models_dir(&app.handle()) {
+                tracing::warn!("Could not create models directory: {e}");
             }
 
             window::setup_window(app)?;
@@ -80,6 +88,10 @@ pub fn run() {
             commands::tts::tts_get_config,
             commands::tts::tts_set_config,
             commands::tts::tts_get_voices,
+            commands::models::model_list,
+            commands::models::model_import,
+            commands::models::model_refresh_scan,
+            commands::models::model_remove,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

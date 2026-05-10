@@ -78,9 +78,25 @@ pub fn on_tray_menu_event(app: &AppHandle, event: tauri::menu::MenuEvent) {
             tracing::info!("TTS settings requested (Phase 2)");
         }
 
-        // ---- Model actions (placeholder, Phase 4 will implement) ----
+        // ---- Model actions ----
         "import_model" => {
-            tracing::info!("Model import requested (Phase 4)");
+            tracing::info!("Model import requested via tray");
+            match crate::models::import_model(app) {
+                Ok(Some(config)) => {
+                    tracing::info!("Model imported: {} ({})", config.name, config.id);
+                    // Emit event to frontend so it can refresh its model list
+                    let _ = app.emit("model:imported", serde_json::json!({
+                        "id": config.id,
+                        "name": config.name,
+                    }));
+                }
+                Ok(None) => {
+                    tracing::info!("Model import cancelled by user");
+                }
+                Err(e) => {
+                    tracing::error!("Model import failed: {e}");
+                }
+            }
         }
 
         // ---- Quit ----
