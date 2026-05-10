@@ -8,6 +8,8 @@ pub enum AppError {
     Tray(String),
     #[error("{0}")]
     Logging(String),
+    #[error("Adapter error: {0}")]
+    Adapter(String),
     #[error("TTS error: {0}")]
     Tts(String),
     #[error("Config error: {0}")]
