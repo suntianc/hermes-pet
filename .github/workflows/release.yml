@@ -1,6 +1,17 @@
-# ViviPet 发布工作流
-# 在推送版本标签 (v*) 时触发：构建 → 打包 → 创建 GitHub Release
----
+# ViviPet Release Workflow (Tauri 2)
+# On v* tag push: build for all platforms → generate updater artifacts → GitHub Release
+# ── Usage ──────────────────────────────────────────────────────────
+#   git tag v0.2.0 && git push origin v0.2.0
+# ── Required Secrets ───────────────────────────────────────────────
+#   APPLE_SIGNING_IDENTITY    - Developer ID Application identity
+#   APPLE_ID                 - Apple ID email for notarization
+#   APPLE_PASSWORD           - App-specific password for notarization
+#   APPLE_TEAM_ID            - Apple Team ID
+#   WINDOWS_SIGN_CERT        - Base64-encoded Windows signing certificate
+#   WINDOWS_SIGN_PASSWORD    - Certificate password
+#   UPDATER_SIGN_PUBKEY      - Public key for update signature verification
+#   UPDATER_SIGN_PRIVKEY     - Private key for update artifact signing
+# ────────────────────────────────────────────────────────────────────
 name: Release
 
 on:
@@ -15,44 +26,58 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: true
 
-# GitHub Actions 运行器将在 2026-06-02 起默认使用 Node 24
-# 提前启用以避免 actions/*@v4 的弃用警告
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # ── Verify: Ensure version consistency ──────────────────────────
+  verify:
+    name: Verify version tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract version from tag
+        id: get-version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - name: Check tauri.conf.json version matches
+        run: |
+          CONFIG_VER=$(jq -r '.version' apps/desktop/src-tauri/tauri.conf.json)
+          if [ "$CONFIG_VER" != "${{ steps.get-version.outputs.version }}" ]; then
+            echo "ERROR: Tag version ${{ steps.get-version.outputs.version }} does not match tauri.conf.json version $CONFIG_VER"
+            exit 1
+          fi
+
+  # ── Build: All platforms ────────────────────────────────────────
   build:
-    name: Build & Package (${{ matrix.target }})
+    name: Build (${{ matrix.target }})
+    needs: [verify]
     strategy:
       fail-fast: false
       matrix:
         include:
-          - target: mac-arm64
+          - target: aarch64-apple-darwin
             os: macos-latest
-            build-args: --mac --arm64
-            artifact-name: ViviPet-macOS-arm64
-            csc-identity: false
-          - target: mac-x64
+            rust-target: aarch64-apple-darwin
+            archive-suffix: macOS-arm64
+          - target: x86_64-apple-darwin
             os: macos-latest
-            build-args: --mac --x64
-            artifact-name: ViviPet-macOS-x64
-            csc-identity: false
-          - target: linux
+            rust-target: x86_64-apple-darwin
+            archive-suffix: macOS-x64
+          - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            build-args: --linux
-            artifact-name: ViviPet-Linux
-            csc-identity: true
-          - target: windows
+            rust-target: x86_64-unknown-linux-gnu
+            archive-suffix: Linux-x64
+          - target: x86_64-pc-windows-msvc
             os: windows-latest
-            build-args: --win
-            artifact-name: ViviPet-Windows
-            csc-identity: true
+            rust-target: x86_64-pc-windows-msvc
+            archive-suffix: Windows-x64
 
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
@@ -63,7 +88,29 @@ jobs:
             package-lock.json
             apps/desktop/package-lock.json
 
-      - name: Install dependencies
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev
+
+      - name: Install npm dependencies
         run: npm install
 
       - name: Build shared packages
@@ -71,44 +118,95 @@ jobs:
           npm run build -w packages/pet-action-dsl
           npm run build -w packages/shared
 
-      - name: Build desktop app (main + renderer)
+      - name: Build desktop app
         run: npm run build -w apps/desktop
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.csc-identity }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.UPDATER_SIGN_PRIVKEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows signing (set on all platforms — only Windows uses it)
+          SIGN_COMMAND: ${{ secrets.WINDOWS_SIGN_CERT && format('signtool sign /fd SHA256 /f {0} /p {1} $file', 'cert.pfx', secrets.WINDOWS_SIGN_PASSWORD) || '' }}
 
-      - name: Package (${{ matrix.target }})
-        run: npx electron-builder ${{ matrix.build-args }} --publish never
-        working-directory: apps/desktop
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.csc-identity }}
-          # electron-builder 上传到 GitHub Release 时使用
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: List build artifacts
+        run: |
+          echo "=== Bundle artifacts ==="
+          find apps/desktop/src-tauri/target/release/bundle -type f 2>/dev/null || echo "(no bundle dir)"
+          echo "=== Updater artifacts ==="
+          find apps/desktop/src-tauri/target/release -maxdepth 1 -name "*.sig" -o -name "*.tar.gz" 2>/dev/null || echo "(no updater artifacts)"
+          echo "=== Full target release ==="
+          ls -la apps/desktop/src-tauri/target/release/ 2>/dev/null | head -20
 
-      - name: Upload artifacts (${{ matrix.target }})
+      - name: Upload bundle artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact-name }}
+          name: ViviPet-${{ matrix.archive-suffix }}
           path: |
-            apps/desktop/release/*.dmg
-            apps/desktop/release/*.zip
-            apps/desktop/release/*.exe
-            apps/desktop/release/*.AppImage
-            apps/desktop/release/*.deb
-            apps/desktop/release/*.tar.gz
-            apps/desktop/release/*.yml
-            apps/desktop/release/*.blockmap
+            apps/desktop/src-tauri/target/release/bundle/**/*
+            apps/desktop/src-tauri/target/release/*.sig
+            apps/desktop/src-tauri/target/release/*.tar.gz
           if-no-files-found: warn
 
+  # ── Generate updater metadata ───────────────────────────────────
+  updater-meta:
+    name: Generate updater.json
+    needs: [verify, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+      - name: Generate updater.json
+        id: updater-json
+        run: |
+          VERSION="${{ needs.verify.outputs.version }}"
+          echo "Generating updater.json for v${VERSION}"
+
+          # Collect .sig and .tar.gz pairs per platform
+          PLATFORMS='[]'
+          for dir in release-artifacts/*/; do
+            platform=$(basename "$dir")
+            # Find .sig and matching .tar.gz
+            for sigfile in "$dir"*.sig; do
+              [ -f "$sigfile" ] || continue
+              base="${sigfile%.sig}"
+              archive="${base}.tar.gz"
+              if [ -f "$archive" ]; then
+                sig=$(base64 < "$sigfile" | tr -d '\n')
+                url="https://github.com/suntianc/ViviPet/releases/download/v${VERSION}/$(basename "$archive")"
+                platform_name="$platform"
+                PLATFORMS=$(echo "$PLATFORMS" | jq --arg url "$url" --arg sig "$sig" --arg platform "$platform_name" \
+                  '. += [{"url": $url, "signature": $sig, "platform": $platform}]')
+              fi
+            done
+          done
+
+          jq -n --arg version "$VERSION" --argjson platforms "$PLATFORMS" \
+            '{"version": $version, "platforms": $platforms}' > updater.json
+          echo "=== updater.json ==="
+          cat updater.json
+          echo "updater-json-path=$(pwd)/updater.json" >> "$GITHUB_OUTPUT"
+
+      - name: Upload updater.json
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-json
+          path: updater.json
+
+  # ── GitHub Release ──────────────────────────────────────────────
   release:
     name: Create GitHub Release
-    needs: [build]
+    needs: [verify, build, updater-meta]
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -117,15 +215,26 @@ jobs:
         with:
           path: release-artifacts
 
-      - name: List release files
+      - name: Download updater.json
+        uses: actions/download-artifact@v4
+        with:
+          name: updater-json
+          path: updater-json
+
+      - name: List all release files
         run: find release-artifacts -type f -ls
+
+      - name: Copy updater.json to root for upload
+        run: cp updater-json/updater.json ./updater.json
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: ViviPet ${{ github.ref_name }}
-          files: release-artifacts/**/*
+          files: |
+            release-artifacts/**/*
+            updater.json
           generate_release_notes: true
           draft: true
           fail_on_unmatched_files: false

@@ -37,15 +37,35 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "minimumSystemVersion": "12.0"
+      "minimumSystemVersion": "12.0",
+      "signing": {
+        "identity": "$APPLE_SIGNING_IDENTITY"
+      },
+      "frameworks": []
     },
     "linux": {
       "deb": {
         "depends": ["libwebkit2gtk-4.1-dev"]
+      },
+      "appimage": {
+        "bundleMediaFramework": true
       }
     },
     "windows": {
+      "wix": null,
       "nsis": {
+        "installMode": "currentUser",
+        "signCommand": "$SIGN_COMMAND"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "YOUR_UPDATER_SIGNATURE_PUBKEY",
+      "endpoints": [
+        "https://github.com/suntianc/ViviPet/releases/latest/download/updater.json"
+      ],
+      "windows": {
         "installMode": "currentUser"
       }
     }

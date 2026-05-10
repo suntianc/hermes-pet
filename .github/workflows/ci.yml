@@ -1,6 +1,6 @@
-# ViviPet CI 工作流
-# 在推送到 main 或创建 PR 时触发：安装依赖 → 构建 → 上传构建产物
----
+# ViviPet CI Workflow (Tauri 2)
+# On push to main / PR: install deps → build → upload artifacts
+# ────────────────────────────────────────────────────────────────────
 name: CI
 
 on:
@@ -21,13 +21,10 @@ on:
       - "CLAUDE.md"
       - "DESIGN.md"
 
-# 同一分支的并发构建自动取消旧的任务
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# GitHub Actions 运行器将在 2026-06-02 起默认使用 Node 24
-# 提前启用以避免 actions/*@v4 的弃用警告
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -36,8 +33,7 @@ jobs:
     name: Build (macOS)
     runs-on: macos-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
@@ -48,7 +44,17 @@ jobs:
             package-lock.json
             apps/desktop/package-lock.json
 
-      - name: Install dependencies
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - name: Install npm dependencies
         run: npm install
 
       - name: Build shared packages
@@ -56,16 +62,19 @@ jobs:
           npm run build -w packages/pet-action-dsl
           npm run build -w packages/shared
 
-      - name: Build desktop app (main + renderer)
+      - name: Build desktop app (Tauri)
         run: npm run build -w apps/desktop
         env:
-          # macOS CI 无签名证书时跳过代码签名检查
-          CSC_IDENTITY_AUTO_DISCOVERY: false
+          APPLE_SIGNING_IDENTITY: ""
+          TAURI_SIGNING_PRIVATE_KEY: ""
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: apps/desktop/dist/
+          path: |
+            apps/desktop/dist/
+            apps/desktop/src-tauri/target/release/bundle/
           retention-days: 7
-          if-no-files-found: error
+          if-no-files-found: warn

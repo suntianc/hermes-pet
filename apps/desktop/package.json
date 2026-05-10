@@ -14,8 +14,9 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2",
     "@rive-app/canvas": "^2.37.5",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-updater": "^2.10.1",
     "openai": "^6.36.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"

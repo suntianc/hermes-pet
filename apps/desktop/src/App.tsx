@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { PetStage } from './components/PetStage';
 import { SpeechBubble } from './components/SpeechBubble';
+import { UpdateNotification } from './components/UpdateNotification';
 import { usePetStore } from './stores/pet-store';
 import { loadModelConfigs, ModelConfig } from './features/pet/model-registry';
 import { StreamingAudioPlayer } from './audio/streaming-player';
@@ -543,6 +544,7 @@ const App: React.FC = () => {
       position: 'relative',
       overflow: 'hidden',
     }}>
+      <UpdateNotification />
       <PetStage
         currentAction={currentAction}
         actionRevision={actionRevision}
