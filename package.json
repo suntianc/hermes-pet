@@ -1,24 +1,20 @@
 {
   "name": "hermes-deskpet",
-  "version": "0.1.0",
-  "description": "Hermes Desktop Pet - A self-evolving desktop companion powered by Hermes Agent",
+  "version": "0.2.0",
+  "description": "AI-driven Live2D desktop companion — Hermes DeskPet",
   "private": true,
   "workspaces": [
     "apps/desktop",
     "packages/*"
   ],
   "scripts": {
-    "dev": "yarn workspace @hermes/deskpet-electron dev",
-    "build": "yarn workspace @hermes/deskpet-electron build",
-    "start": "yarn workspace @hermes/deskpet-electron start",
+    "dev": "cd apps/desktop && npm run dev",
+    "build": "cd apps/desktop && npm run build",
     "lint": "turbo run lint",
     "clean": "turbo run clean"
   },
   "engines": {
     "node": ">=18.0.0"
   },
-  "packageManager": "yarn@1.22.22",
-  "devDependencies": {
-    "electron": "^41.4.0"
-  }
+  "packageManager": "yarn@1.22.22"
 }
