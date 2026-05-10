@@ -1,3 +1,5 @@
+use serde::Serialize;
+
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
     #[error("{0}")]
@@ -6,9 +8,13 @@ pub enum AppError {
     Tray(String),
     #[error("{0}")]
     Logging(String),
+    #[error("TTS error: {0}")]
+    Tts(String),
+    #[error("Config error: {0}")]
+    Config(String),
 }
 
-impl serde::Serialize for AppError {
+impl Serialize for AppError {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
