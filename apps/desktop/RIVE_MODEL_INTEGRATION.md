@@ -233,7 +233,7 @@ const rive = new Rive({
 
 ### 源码参考
 
-- **协议注册：** `apps/desktop/electron/model-manager.ts` → `initModelProtocol()`（D-02）
+- **协议注册：** `apps/desktop/src-tauri/src/model.rs` → 模型导入、目录扫描、注册表管理
 - **路径安全函数：** `resolveSafeUserModelPath()`（D-01 防护）
 
 ---
@@ -246,12 +246,12 @@ const rive = new Rive({
 | `apps/desktop/public/models/<Name>/<Name>.riv` | 内置 .riv 模型文件（需自行创建） | 模型资源 |
 | `apps/desktop/src/features/pet/rive-inputs.ts` | SM 输入命名常量 | 编码绑定 |
 | `apps/desktop/src/features/pet/model-registry.ts` | ModelConfig 类型和加载逻辑 | 加载运行时 |
-| `apps/desktop/electron/model-manager.ts` | 模型导入、协议、用户模型扫描 | 主进程服务 |
+| `apps/desktop/src-tauri/src/model.rs` | 模型导入、目录扫描、模型注册表 | Rust 后端 |
 | `{userData}/models/<id>/model.riv` | 用户导入的模型文件 | 用户模型 |
 | `{userData}/models/<id>/.vivipet-registry.json` | 用户导入模型的元数据 | 用户模型发现 |
 | `apps/desktop/src/features/pet/Live2DRenderer.ts` | 旧 Live2D 渲染器（保留但标记为备用） | 备用渲染 |
-| `apps/desktop/electron/action-index.ts` | SQLite 动作索引（Rive 模型跳过） | 兼容层 |
-| `apps/desktop/electron-builder.yml` | Electron 打包配置（extraResources） | 构建 |
+| `apps/desktop/src-tauri/src/commands.rs` | Tauri 命令：模型列表、导入、删除 | Rust 后端 |
+| `apps/desktop/src-tauri/tauri.conf.json` | Tauri 构建配置（bundle、window、plugins） | 构建 |
 
 ---
 
