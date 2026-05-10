@@ -1,7 +1,7 @@
 # STATE.md — Hermes DeskPet
 
-**Status:** Milestone 2 — Tauri Migration | Phase 1 Context Gathered
-**Current Phase:** Foundation — Tauri 2 scaffold, window, tray, logging, single instance
+**Status:** Milestone 2 — Tauri Migration | Phase 2 TTS Engine Complete
+**Current Phase:** TTS Engine — system/local/cloud providers, Channel streaming, 5 Tauri commands
 
 ---
 
@@ -19,19 +19,19 @@
 | Item | Value |
 |------|-------|
 | Milestone | 2 — Tauri Migration |
-| Current Phase | Phase 1: Foundation — context gathered |
+| Current Phase | Phase 2: TTS Engine |
 | Current Plan | — |
-| Status | Ready for planning |
-| Progress | 0/25 requirements complete |
+| Status | Complete |
+| Progress | 5/25 requirements complete |
 
 ### Phase Snapshot
 
 | Phase | Status | Requirements | Ready For |
 |-------|--------|-------------|-----------|
-| 1 — Foundation | Context gathered (14 decisions) | FND-01~05 (06 deferred) | Plan: Phase 1 |
-| 2 — TTS Engine | Not started | TTS-01~05 | Blocked by Phase 1 |
-| 3 — HTTP Adapter | Not started | ADP-01~02 | Blocked by Phase 1 |
-| 4 — Model Management | Not started | MOD-01~02 | Blocked by Phase 1 |
+| 1 — Foundation | Complete | FND-01~05 (06 deferred) | Verifying |
+| 2 — TTS Engine | **Complete** | TTS-01~05 ✅ | Verified |
+| 3 — HTTP Adapter | Not started | ADP-01~02 | Ready to plan |
+| 4 — Model Management | Not started | MOD-01~02 | Ready to plan |
 | 5 — AI Planner | Not started | AI-01~02 | Blocked by Phase 4 |
 | 6 — Frontend IPC Migration | Not started | IPC-01~03 | Blocked by Phases 2-5 |
 | 7 — Distribution | Not started | DST-01~04 | Blocked by Phase 6 |
@@ -44,9 +44,12 @@
 | Metric | Current | Target |
 |--------|---------|--------|
 | Requirements mapped | 25/25 ✓ | 100% |
+| Requirements complete | 5/25 | 20% |
 | Phases defined | 8 | 8 |
+| Phases complete | 2/8 | 25% |
 | Electron backend files remaining | ~15 | 0 |
 | Rust backend files to write | 0 | ~25 |
+| Rust backend files written | ~20 | <25 |
 
 ---
 
@@ -85,19 +88,19 @@
 
 ### Last Session
 
-- Phase 1 (Foundation) context discussion completed
-- 4 gray areas discussed: Monorepo strategy, Window persistence, Tray menu, CI/CD
-- 14 implementation decisions captured in CONTEXT.md
-- CI/CD (FND-06) deferred — Phase 1 focus is local development
-- See `01-foundation/01-CONTEXT.md` for full decisions
+- Phase 2 (TTS Engine) execution completed
+- 4 plans executed: foundation → providers → wiring → frontend test
+- 14 Rust source files created/updated
+- 5 TTS requirements satisfied (TTS-01~05)
+- 2 deviations: tokio dependency, abort flag propagation fix
 
 ### Next Action
 
-Plan Phase 1: Foundation. Move to planning based on captured context.
+Proceed to Phase 3: HTTP Adapter (axum on :18765) or Phase 4: Model Management. Phases 2-4 can execute in parallel.
 
 ```
-Phase 1: Foundation → cargo tauri dev, frameless window, tray, logging, single instance (CI/CD deferred)
-Phase 2: TTS → system/local/cloud providers, queue, Channel streaming
+Phase 1: Foundation → cargo tauri dev, frameless window, tray, logging, single instance (CI/CD deferred) ✅
+Phase 2: TTS → system/local/cloud providers, queue, Channel streaming ✅
 Phase 3: Adapter → axum :18765, graceful shutdown
 Phase 4: Model → import, walkdir scan, registry
 Phase 5: AI → reqwest OpenAI, function calling, rule/ai/hybrid modes
@@ -108,4 +111,4 @@ Phase 8: Cleanup → remove all Electron/Node.js
 
 ---
 
-*Last updated: 2026-05-09 after Phase 1 context discussion*
+*Last updated: 2026-05-10 after Phase 2 TTS Engine execution*
