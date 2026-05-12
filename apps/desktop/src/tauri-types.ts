@@ -47,6 +47,7 @@ export interface ModelConfigDTO {
   id: string;
   name: string;
   path: string;
+  /** 模型类型："rive" | "live2d"。默认为 "live2d" 当使用 Cubism SDK */
   type?: string;
   window?: WindowSize;
   canvas?: WindowSize;

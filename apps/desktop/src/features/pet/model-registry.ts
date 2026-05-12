@@ -1,7 +1,26 @@
 import { petModel } from '../../tauri-adapter';
 import type { ModelConfigDTO } from '../../tauri-types';
 
-export type ModelType = 'rive';
+export type ModelType = 'rive' | 'live2d';
+
+/** Live2D 模型特定元数据 */
+export interface Live2DMetadata {
+  /** .model3.json 中定义的可用 Motion 组名 */
+  motions?: string[];
+  /** .model3.json 中定义的表情名 */
+  expressions?: string[];
+  /** 物理效果文件路径（相对模型目录） */
+  physics?: string;
+  /** 姿势文件路径（相对模型目录） */
+  pose?: string;
+  /** 模型画布显示信息 */
+  displayInfo?: {
+    width: number;
+    height: number;
+    xOrigin: number;
+    yOrigin: number;
+  };
+}
 
 export interface ModelConfig {
   id: string;
@@ -18,6 +37,8 @@ export interface ModelConfig {
   };
   actions?: Record<string, ModelActionConfig>;
   capabilities?: ModelCapabilities;
+  /** Live2D 模型特定元数据（可选，运行时从 .model3.json 自动解析） */
+  live2d?: Live2DMetadata;
 }
 
 export interface ModelCapabilities {
@@ -95,6 +116,7 @@ export async function loadModelConfigs(): Promise<ModelConfig[]> {
         id: m.id,
         name: m.name,
         path: m.path,
+        type: (m.type === 'rive' || m.type === 'live2d' ? m.type : undefined) as ModelType | undefined,
         window: m.window,
         canvas: m.canvas ?? (m.window ? { width: m.window.width, height: m.window.height } : undefined),
         actions: m.actions as Record<string, ModelActionConfig> | undefined,
