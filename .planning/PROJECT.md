@@ -12,26 +12,43 @@
 
 ### Validated
 
-从已完成 Milestone 1（Live2D → Rive 迁移）交付的能力：
+从已完成 Milestone 1（Live2D → Rive 迁移）和 Milestone 2（Electron → Tauri 迁移）交付的能力：
 
-- ✓ **Rive 渲染管线** — RiveRenderer + 多 canvas 架构，@rive-app/canvas 驱动
-- ✓ **状态机驱动动画** — 10 种动作状态（idle/thinking/speaking/happy/error/searching/coding/terminal/confused/angry）
-- ✓ **TTS 唇形同步** — mouth_open 数值输入驱动嘴部动画，RMS 振幅平滑 + 迟滞削波
-- ✓ **鼠标跟随** — look_x/look_y 数值输入，50ms 轮询
-- ✓ **空闲自动返回** — 瞬间动作 400ms 后自动回到 idle
+- ✓ **Tauri 2 + Rust 架构** — 完整的 Rust 后端（TTS, Adapter, AI, Model, Tray, Window）
+- ✓ **零 Node.js 依赖** — 全部 Electron 代码已移除
+- ✓ **跨平台构建** — macOS .dmg / Windows .msi / Linux .AppImage
+- ✓ **前端 IPC 适配层** — tauri-adapter.ts + @tauri-apps/api
+- ✓ **Rive 渲染管线** — RiveRenderer + 多 canvas 架构（将被替换）
+- ✓ **状态机驱动动画** — 10 种动作状态
+- ✓ **TTS 唇形同步** — mouth_open 数值输入驱动嘴部动画（需适配到 Live2D）
+- ✓ **鼠标跟随** — look_x/look_y 数值输入（需适配到 Live2D）
 - ✓ **TTS 引擎** — 三提供商（system/local/cloud），队列管理，长文本分段
 - ✓ **StreamingAudioPlayer** — Web Audio API 播放，实时 RMS 振幅分析
-- ✓ **HTTP Adapter** — 端口 18765 接受外部 Agent 事件
+- ✓ **HTTP Adapter** — 端口 18765 axum 服务器
 - ✓ **AI 行为规划器** — OpenAI function calling（rule/ai/hybrid 三模式）
 - ✓ **事件驱动行为系统** — Agent phase → 宠物动作映射
 - ✓ **Speech Bubble** — 文字气泡（计时/tts-sync 两种模式）
-- ✓ **系统托盘** — 显示/隐藏、尺寸、鼠标穿透/跟随、模型切换、TTS 配置
-- ✓ **模型管理系统** — .riv 导入/扫描、用户模型合并
+- ✓ **系统托盘** — 11 项完整菜单
+- ✓ **模型管理系统** — 文件扫描、注册、导入
 - ✓ **窗口管理** — 无边框透明置顶，右下角锚定
+- ✓ **自动更新** — tauri-plugin-updater + React UI
+- ✓ **单实例锁** — 防止多实例
+
+## Current Milestone: v3.0 Live2D 回归
+
+**Goal:** 在 Tauri 2 架构上重新集成 Live2D Cubism 5 WebGL 渲染引擎，替换 Rive，利用现有 Live2D 模型资源。
+
+**Target features:**
+- 重新集成 Live2D Cubism 5 Web SDK（WebGL 渲染）
+- Live2DRenderer 实现 PetRenderer 接口
+- 替换 RiveRenderer，适配现有事件和状态系统
+- 模型管理适配 .moc3 文件
+- 移除 Rive 依赖
+- 保留 TTS/Adapter/AI/Tray/Window 等全部现有功能
 
 ### Active
 
-目标: Electron → Tauri 2 + Rust 全线迁移。所有 backend 逻辑从 Node.js/Electron 重写为 Rust/Tauri commands。
+目标: 在 Tauri 2 + Rust 后端基础上，将渲染引擎从 Rive 替换回 Live2D。
 
 - [ ] **TAURI-01**: 初始化 Tauri 2 项目，配置跨平台构建（macOS/Win/Linux）
 - [ ] **TAURI-02**: 窗口管理迁移（无边框透明、置顶、锚定右下角、拖拽/缩放）
@@ -54,7 +71,8 @@
 - **Web 版本** — 桌面应用，不计划 Web 部署
 - **移动端** — 不计划 iOS/Android 版本
 - **实时语音对话** — TTS 为单向播报，不包含语音识别和对话轮次管理
-- **AI Agent 业务逻辑** — 迁移的是框架，业务监控指标在迁移后规划
+- **AI Agent 业务逻辑** — 先完成渲染引擎替换
+- **Rive 与 Live2D 并行** — 全量替换，保持单一渲染引擎
 
 ## Context
 
