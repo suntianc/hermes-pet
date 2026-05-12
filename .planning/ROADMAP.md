@@ -8,8 +8,8 @@
 
 ## Phases
 
-- [ ] **Phase 1: Live2D 核心渲染** — Cubism 5 WebGL SDK 集成、Live2DRenderer、动作映射
-- [ ] **Phase 2: 动画与交互** — TTS 唇形同步、鼠标跟随、空闲动画
+- [x] **Phase 1: Live2D 核心渲染** — Cubism 5 WebGL SDK 集成、Live2DRenderer、动作映射
+- [x] **Phase 2: 动画与交互** — TTS 唇形同步、鼠标跟随、空闲动画 (completed 2026-05-12)
 - [ ] **Phase 3: 模型管理** — .moc3 导入、models.json 注册表更新
 - [ ] **Phase 4: 清理收尾** — 移除 Rive 依赖与代码、更新文档
 
@@ -45,9 +45,9 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 02-01-PLAN.md — TTS 唇形同步 — setSpeaking 增强、RMS 平滑/削波/迟滞、updateLipSync 每帧循环
-- [ ] 02-02-PLAN.md — 鼠标跟随 — lookAt 实现、ParamAngleX/Y 映射、lerp 平滑
-- [ ] 02-03-PLAN.md — 空闲动画 — CubismBreath + CubismEyeBlink 初始化、deltaTime 帧更新
+- [x] 02-01-PLAN.md — TTS 唇形同步 — setSpeaking 增强、RMS 平滑/削波/迟滞、updateLipSync 每帧循环
+- [x] 02-02-PLAN.md — 鼠标跟随 — lookAt 实现、ParamAngleX/Y 映射、lerp 平滑
+- [x] 02-03-PLAN.md — 空闲动画 — CubismBreath + CubismEyeBlink 初始化、deltaTime 帧更新
 
 ### Phase 3: 模型管理
 **Goal**: 用户可导入和切换 Live2D 模型，管理系统适配 .moc3 格式
@@ -89,6 +89,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Live2D 核心渲染 | 3/3 | Planned | - |
-| 2. 动画与交互 | 0/3 | Not started | - |
+| 2. 动画与交互 | 2/2 | Complete   | 2026-05-12 |
 | 3. 模型管理 | 0/2 | Not started | - |
 | 4. 清理收尾 | 0/3 | Not started | - |
