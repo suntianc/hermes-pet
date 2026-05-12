@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Live2D 回归
 status: executing
-stopped_at: Phase 2 complete — TTS lip sync, mouse follow, idle animation
-last_updated: "2026-05-12T03:04:33.164Z"
+stopped_at: Phase 4 complete — all Live2D migration done
+last_updated: "2026-05-12T11:11:00.000Z"
 last_activity: 2026-05-12
 progress:
   total_phases: 10
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-11)
 
 ## Current Position
 
-Phase: 2 of 4 (动画与交互)
-Plan: 3 of 3 in current phase
+Phase: 4 of 4 (清理收尾)
+Plan: 1 of 1 in current phase
 Status: Complete
 Last activity: 2026-05-12
 
-Progress: [████████░░] 87%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -44,10 +44,10 @@ Progress: [████████░░] 87%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1. Live2D 核心渲染 | 0/3 | - | - |
+| 1. Live2D 核心渲染 | 3/3 | 15 min | 5 min |
 | 2. 动画与交互 | 3/3 | 15 min | 5 min |
-| 3. 模型管理 | 0/2 | - | - |
-| 4. 清理收尾 | 0/3 | - | - |
+| 3. 模型管理 | 1/1 | 5 min | 5 min |
+| 4. 清理收尾 | 1/1 | 15 min | 15 min |
 
 **Recent Trend:** N/A
 
@@ -66,6 +66,10 @@ Progress: [████████░░] 87%
 | D-05 | 动画更新顺序: idle → lip sync → mouse follow | 在 startLoop 中按先物理后交互的逻辑顺序更新参数 |
 | D-06 | Breath/EyeBlink 存于 CubismUserModel 的 protected 字段 | 利用框架已有基础设施，通过 (any) 绕过 TS 访问限制 |
 | D-07 | Amplitude hysteresis 迟滞带 0.02 | 防止 MouthOpenY 在阈值附近快速开关导致嘴部微颤 |
+| D-08 | ModelType 扩展为 'rive' | 'live2d' | 向后兼容旧导入的 Rive 模型 |
+| D-09 | Live2DMetadata 为可选字段 | 运行时从 .model3.json 自动解析而非硬编码 |
+| D-10 | 保留 'rive' 类型向后兼容 | 用户可能仍有 .riv 格式的旧模型配置 |
+| D-11 | CLAUDE.md 全面替换为 Live2D 架构 | 删除所有 Rive 引用，用户通过文档了解当前架构 |
 
 ### Pending Todos
 
@@ -87,9 +91,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-12T03:04:33.158Z
-Stopped at: Phase 2 complete — TTS lip sync, mouse follow, idle animation
-Resume file: .planning/phases/02-animation-interaction/02-SUMMARY.md
+Last session: 2026-05-12T11:11:00.000Z
+Stopped at: Phase 4 complete — all Live2D migration done
+Resume file: .planning/phases/04-cleanup/04-01-SUMMARY.md
 
 ### Phase Sequence
 

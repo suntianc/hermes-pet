@@ -7,26 +7,26 @@
 
 ### Live2D Core Rendering
 
-- [ ] **L2D-01**: 集成 Live2D Cubism 5 WebGL SDK，在 Tauri WebView 中渲染 .moc3 模型
-- [ ] **L2D-02**: 创建 Live2DRenderer 实现 PetRenderer 接口（loadModel, playAction, setSpeaking, lookAt, resize, destroy）
-- [ ] **L2D-03**: 动作映射系统 — 将 10 种动作状态映射到 Live2D Motion 组（无对应时自动 fallback）
+- [x] **L2D-01**: 集成 Live2D Cubism 5 WebGL SDK，在 Tauri WebView 中渲染 .moc3 模型
+- [x] **L2D-02**: 创建 Live2DRenderer 实现 PetRenderer 接口（loadModel, playAction, setSpeaking, lookAt, resize, destroy）
+- [x] **L2D-03**: 动作映射系统 — 将 10 种动作状态映射到 Live2D Motion 组（无对应时自动 fallback）
 
 ### Animation & Interaction
 
-- [ ] **L2D-04**: TTS 唇形同步 — 通过 mouthOpen 参数驱动嘴部动画，基于 RMS 振幅值
-- [ ] **L2D-05**: 鼠标跟随 — 通过 ParamAngleX/ParamAngleY 或自定义参数实现
-- [ ] **L2D-06**: 空闲动画 — 呼吸 + 眨眼自动循环，400ms 空闲返回 idle
+- [x] **L2D-04**: TTS 唇形同步 — 通过 mouthOpen 参数驱动嘴部动画，基于 RMS 振幅值
+- [x] **L2D-05**: 鼠标跟随 — 通过 ParamAngleX/ParamAngleY 或自定义参数实现
+- [x] **L2D-06**: 空闲动画 — 呼吸 + 眨眼自动循环，400ms 空闲返回 idle
 
 ### Model Management
 
-- [ ] **L2D-07**: 模型导入系统适配 .moc3 + .model3.json 文件（替代 .riv 导入流程）
-- [ ] **L2D-08**: 模型注册表 models.json 更新为 Live2D 格式，支持内建 + 用户导入模型
+- [x] **L2D-07**: 模型导入系统适配 .moc3 + .model3.json 文件（替代 .riv 导入流程）
+- [x] **L2D-08**: 模型注册表 models.json 更新为 Live2D 格式，支持内建 + 用户导入模型
 
 ### Cleanup
 
-- [ ] **L2D-09**: 移除 @rive-app/canvas 依赖和相关代码（RiveRenderer, rive-inputs.ts 等）
-- [ ] **L2D-10**: 移除 .riv 文件导入和相关模型管理代码
-- [ ] **L2D-11**: 更新 CLAUDE.md 和文档反映 Live2D 架构
+- [x] **L2D-09**: 移除 @rive-app/canvas 依赖和相关代码（RiveRenderer, rive-inputs.ts 等）
+- [x] **L2D-10**: 移除 .riv 文件导入和相关模型管理代码
+- [x] **L2D-11**: 更新 CLAUDE.md 和文档反映 Live2D 架构
 
 ## v2 Requirements (Future)
 
@@ -48,17 +48,17 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| L2D-01 | Phase 1 | Pending |
-| L2D-02 | Phase 1 | Pending |
-| L2D-03 | Phase 1 | Pending |
-| L2D-04 | Phase 2 | Pending |
-| L2D-05 | Phase 2 | Pending |
-| L2D-06 | Phase 2 | Pending |
-| L2D-07 | Phase 3 | Pending |
-| L2D-08 | Phase 3 | Pending |
-| L2D-09 | Phase 4 | Pending |
-| L2D-10 | Phase 4 | Pending |
-| L2D-11 | Phase 4 | Pending |
+| L2D-01 | Phase 1 | ✅ Complete |
+| L2D-02 | Phase 1 | ✅ Complete |
+| L2D-03 | Phase 1 | ✅ Complete |
+| L2D-04 | Phase 2 | ✅ Complete |
+| L2D-05 | Phase 2 | ✅ Complete |
+| L2D-06 | Phase 2 | ✅ Complete |
+| L2D-07 | Phase 3 | ✅ Complete |
+| L2D-08 | Phase 3 | ✅ Complete |
+| L2D-09 | Phase 4 | ✅ Complete |
+| L2D-10 | Phase 4 | ✅ Complete |
+| L2D-11 | Phase 4 | ✅ Complete |
 
 **Coverage:**
 - v3.0 requirements: 11 total

@@ -10,8 +10,8 @@
 
 - [x] **Phase 1: Live2D 核心渲染** — Cubism 5 WebGL SDK 集成、Live2DRenderer、动作映射
 - [x] **Phase 2: 动画与交互** — TTS 唇形同步、鼠标跟随、空闲动画 (completed 2026-05-12)
-- [ ] **Phase 3: 模型管理** — .moc3 导入、models.json 注册表更新
-- [ ] **Phase 4: 清理收尾** — 移除 Rive 依赖与代码、更新文档
+- [x] **Phase 3: 模型管理** — .moc3 导入、models.json 注册表更新 (completed 2026-05-12)
+- [x] **Phase 4: 清理收尾** — 移除 Rive 依赖与代码、更新文档 (completed 2026-05-12)
 
 ## Phase Details
 
@@ -62,8 +62,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 03-01: .moc3 导入流程 — 文件对话框、文件复制、.model3.json 解析
-- [ ] 03-02: models.json 注册表更新 — Live2D 格式定义、内建 + 用户模型合并
+- [x] 03-01: .moc3 模型格式适配 — ModelType 'live2d', Live2DMetadata, models.json 更新 (5c661a2, e495cc4)
 
 ### Phase 4: 清理收尾
 **Goal**: 项目完全移除 Rive 依赖和代码，文档反映 Live2D 架构
@@ -78,9 +77,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: 移除 @rive-app/canvas 依赖 + RiveRenderer 等 Rive 代码
-- [ ] 04-02: 移除 .riv 导入和管理代码
-- [ ] 04-03: 更新 CLAUDE.md 和项目文档
+- [x] 04-01: 完整清理 — 删除 Rive 文件、移除依赖、清理 CSS/日志、更新 CLAUDE.md、构建验证 (faca106..7e0c121)
 
 ## Progress
 
@@ -88,7 +85,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Live2D 核心渲染 | 3/3 | Planned | - |
-| 2. 动画与交互 | 2/2 | Complete   | 2026-05-12 |
-| 3. 模型管理 | 0/2 | Not started | - |
-| 4. 清理收尾 | 0/3 | Not started | - |
+| 1. Live2D 核心渲染 | 3/3 | Complete | 2026-05-12 |
+| 2. 动画与交互 | 3/3 | Complete | 2026-05-12 |
+| 3. 模型管理 | 1/1 | Complete | 2026-05-12 |
+| 4. 清理收尾 | 1/1 | Complete | 2026-05-12 |
