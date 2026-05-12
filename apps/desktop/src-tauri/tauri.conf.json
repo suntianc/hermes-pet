@@ -6,8 +6,8 @@
   "build": {
     "frontendDist": "../dist/renderer",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "vite build",
-    "beforeDevCommand": "vite"
+    "beforeBuildCommand": "npx vite build",
+    "beforeDevCommand": "npx vite"
   },
   "app": {
     "windows": [
@@ -24,7 +24,8 @@
     ],
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
-    }
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,

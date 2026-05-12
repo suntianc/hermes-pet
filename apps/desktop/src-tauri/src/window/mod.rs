@@ -3,7 +3,7 @@ mod position;
 use tauri::Manager;
 use tauri_plugin_positioner::WindowExt;
 
-pub use position::*;
+use position::move_to_bottom_right;
 
 /// Apply window setup during Tauri app initialization.
 /// Called from lib.rs setup closure.
