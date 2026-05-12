@@ -1,6 +1,8 @@
 import { CubismDefaultParameterId } from '@framework/cubismdefaultparameterid';
 import { CubismModelSettingJson } from '@framework/cubismmodelsettingjson';
 import { ICubismModelSetting } from '@framework/icubismmodelsetting';
+import { CubismBreath, BreathParameterData } from '@framework/effect/cubismbreath';
+import { CubismEyeBlink } from '@framework/effect/cubismeyeblink';
 import { CubismFramework } from '@framework/live2dcubismframework';
 import { CubismMatrix44 } from '@framework/math/cubismmatrix44';
 import { CubismUserModel } from '@framework/model/cubismusermodel';
@@ -58,6 +60,27 @@ export class Live2DRenderer implements PetRenderer {
   private animationId: number | null = null;
   private modelDir = '';
 
+  // TTS 唇形同步 (Plan 02-01)
+  private currentAmplitude = 0;
+  private targetAmplitude = 0;
+  private lastMouthValue = 0;
+  private mouthCurrentlyOpen = false;
+  private readonly AMPLITUDE_CLAMP = 0.05;
+  private readonly AMP_LERP_FACTOR = 0.2;
+  private readonly AMP_HYSTERESIS = 0.02;
+
+  // 鼠标跟随 (Plan 02-02)
+  private targetLookX = 0;
+  private targetLookY = 0;
+  private currentLookX = 0;
+  private currentLookY = 0;
+  private lastLookX = 999;
+  private lastLookY = 999;
+  private readonly LOOK_LERP_FACTOR = 0.1;
+
+  // 空闲动画 (Plan 02-03)
+  private lastFrameTime = 0;
+
   get view(): HTMLCanvasElement | null {
     return this.canvas;
   }
@@ -111,8 +134,32 @@ export class Live2DRenderer implements PetRenderer {
     mat.scale(scale, scale);
     renderer.setMvpMatrix(mat);
 
+    // 初始化空闲动画效果 (Plan 02-03): 呼吸 + 眨眼
+    this.initializeIdleEffects();
+
     this.startLoop();
     this.playAction('idle');
+  }
+
+  private initializeIdleEffects(): void {
+    if (!this.userModel || !this.modelSetting) return;
+    const model = this.userModel.getModel();
+
+    // 呼吸: 默认参数 (ParamBodyAngleX, ParamBreath, ParamAngleY)
+    const breath = CubismBreath.create();
+    const idManager = CubismFramework.getIdManager();
+    breath.setParameters([
+      new BreathParameterData(idManager.getId(CubismDefaultParameterId.ParamBodyAngleX), 0.0, 0.5, 3.0, 0.5),
+      new BreathParameterData(idManager.getId(CubismDefaultParameterId.ParamBreath), 0.0, 0.5, 3.0, 0.5),
+      new BreathParameterData(idManager.getId(CubismDefaultParameterId.ParamAngleY), 0.0, 0.25, 3.0, 0.5),
+    ]);
+    (this.userModel as any)._breath = breath;
+
+    // 眨眼: 从 modelSetting 自动读取眨眼参数
+    const eyeBlink = CubismEyeBlink.create(this.modelSetting);
+    (this.userModel as any)._eyeBlink = eyeBlink;
+
+    this.lastFrameTime = performance.now();
   }
 
   async playAction(actionName: string, _options?: PlayActionOptions): Promise<void> {
@@ -146,17 +193,24 @@ export class Live2DRenderer implements PetRenderer {
   setParameters(_params: Record<string, number>): void {}
   setSpeaking(speaking: boolean, amplitude = 0): void {
     if (!this.userModel) return;
-    if (speaking && amplitude > 0) {
-      const model = this.userModel.getModel();
-      try {
-        const paramId = CubismFramework.getIdManager().getId(CubismDefaultParameterId.MouthOpenY);
-        model.setParameterValueByIndex(model.getParameterIndex(paramId), amplitude);
-      } catch { }
+    if (speaking) {
+      this.targetAmplitude = amplitude > this.AMPLITUDE_CLAMP
+        ? Math.min(amplitude, 1.0)
+        : 0;
+    } else {
+      this.targetAmplitude = 0;
     }
   }
   speak(_text: string): Promise<void> { return Promise.resolve(); }
-  lookAt(_x: number, _y: number): void {}
-  resetPointer(): void {}
+  lookAt(x: number, y: number): void {
+    if (!this.canvas) return;
+    this.targetLookX = Math.max(-1, Math.min(1, (x / this.canvas.width) * 2 - 1));
+    this.targetLookY = Math.max(-1, Math.min(1, (y / this.canvas.height) * 2 - 1));
+  }
+  resetPointer(): void {
+    this.targetLookX = 0;
+    this.targetLookY = 0;
+  }
   resize(w: number, h: number): void {
     if (this.canvas) { this.canvas.width = w; this.canvas.height = h; }
   }
@@ -173,10 +227,100 @@ export class Live2DRenderer implements PetRenderer {
     this.userModel = null; this.modelSetting = null; this.gl = null; this.canvas = null;
   }
 
+  /** 每帧更新唇形同步: 振幅平滑 + 迟滞削波 */
+  private updateLipSync(): void {
+    if (!this.userModel) return;
+    // 指数移动平均 (Plan 02-01: lerp factor 0.2)
+    this.currentAmplitude += (this.targetAmplitude - this.currentAmplitude) * this.AMP_LERP_FACTOR;
+
+    const model = this.userModel.getModel();
+    let paramId: any;
+    try {
+      paramId = CubismFramework.getIdManager().getId(CubismDefaultParameterId.MouthOpenY);
+    } catch { return; }
+
+    // 迟滞削波 (Plan 02-01: 防止在阈值附近快速开关)
+    let mouthValue: number;
+    if (this.mouthCurrentlyOpen) {
+      mouthValue = this.currentAmplitude < this.AMPLITUDE_CLAMP - this.AMP_HYSTERESIS
+        ? 0 : this.currentAmplitude;
+      this.mouthCurrentlyOpen = mouthValue > 0;
+    } else {
+      mouthValue = this.currentAmplitude > this.AMPLITUDE_CLAMP
+        ? this.currentAmplitude : 0;
+      this.mouthCurrentlyOpen = mouthValue > 0;
+    }
+
+    if (Math.abs(mouthValue - this.lastMouthValue) > 0.005) {
+      try {
+        model.setParameterValueById(paramId, mouthValue);
+      } catch { }
+      this.lastMouthValue = mouthValue;
+    }
+  }
+
+  /** 每帧更新鼠标跟随: lerp 平滑 + 映射到 ParamAngleX/ParamAngleY */
+  private updateMouseFollow(): void {
+    if (!this.userModel) return;
+    // 指数平滑 (Plan 02-02: lerp factor 0.1)
+    this.currentLookX += (this.targetLookX - this.currentLookX) * this.LOOK_LERP_FACTOR;
+    this.currentLookY += (this.targetLookY - this.currentLookY) * this.LOOK_LERP_FACTOR;
+
+    const model = this.userModel.getModel();
+    const idManager = CubismFramework.getIdManager();
+
+    // 映射: normalized -1..1 → ParamAngleX × 30°, ParamAngleY × 15°
+    const angleX = this.currentLookX * 30;
+    const angleY = this.currentLookY * 15;
+
+    if (Math.abs(this.currentLookX - this.lastLookX) > 0.001) {
+      try {
+        model.setParameterValueById(idManager.getId(CubismDefaultParameterId.ParamAngleX), angleX);
+      } catch { }
+      this.lastLookX = this.currentLookX;
+    }
+    if (Math.abs(this.currentLookY - this.lastLookY) > 0.001) {
+      try {
+        model.setParameterValueById(idManager.getId(CubismDefaultParameterId.ParamAngleY), angleY);
+      } catch { }
+      this.lastLookY = this.currentLookY;
+    }
+  }
+
+  /** 每帧更新空闲动画效果: 呼吸 + 眨眼 */
+  private updateIdleEffects(deltaTimeSec: number): void {
+    if (!this.userModel) return;
+    const model = this.userModel.getModel();
+
+    // 更新呼吸
+    const breath = (this.userModel as any)._breath;
+    if (breath) {
+      breath.updateParameters(model, deltaTimeSec);
+    }
+
+    // 更新眨眼
+    const eyeBlink = (this.userModel as any)._eyeBlink;
+    if (eyeBlink) {
+      eyeBlink.updateParameters(model, deltaTimeSec);
+    }
+  }
+
   private startLoop(): void {
+    this.lastFrameTime = performance.now();
     const loop = () => {
       if (this.disposed) return;
+
+      // 计算 deltaTime (Plan 02-03: clamp to 0.1s max)
+      const now = performance.now();
+      let deltaTimeSec = (now - this.lastFrameTime) / 1000;
+      deltaTimeSec = Math.min(deltaTimeSec, 0.1);
+      this.lastFrameTime = now;
+
       if (this.userModel) {
+        // 顺序: 空闲动画 → 嘴唇同步 → 鼠标跟随 → 绘制
+        this.updateIdleEffects(deltaTimeSec);
+        this.updateLipSync();
+        this.updateMouseFollow();
         this.userModel.getRenderer().drawModel();
       }
       this.animationId = requestAnimationFrame(loop);
