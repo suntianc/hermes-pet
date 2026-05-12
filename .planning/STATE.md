@@ -1,134 +1,81 @@
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-current_phase: Distribution — updater + cross-platform bundle config
-status: completed
-last_updated: "2026-05-11T11:00:00.000Z"
-progress:
-  total_phases: 8
-  completed_phases: 7
-  total_plans: 17
-  completed_plans: 16
-  percent: 94
----
-
-# STATE.md — Hermes DeskPet
-
-**Status:** Milestone 2 — Tauri Migration | Phase 7: Distribution Complete
-**Current Phase:** Distribution — updater + cross-platform bundle config
-
----
+# Project State
 
 ## Project Reference
 
+See: .planning/PROJECT.md (updated 2026-05-11)
+
 **Core value:** 宠物通过生动的动画和语音反馈，让用户感知 AI Agent 的实时工作状态
-**Current focus:** 将全部 Electron/Node.js 后端 (~15 个文件) 重写为 Rust/Tauri 2 commands，前端 Rive + React 层保持不变
-
-**Key constraint:** 跨平台 (macOS/Windows/Linux)，零 Node.js 依赖，质量和完整性优先于速度
-
----
+**Current focus:** Milestone v3.0 Live2D 回归 — 将渲染引擎从 Rive 替换回 Live2D Cubism 5 WebGL
 
 ## Current Position
 
-| Item | Value |
-|------|-------|
-| Milestone | 2 — Tauri Migration |
-| Current Phase | Phase 6: Frontend IPC Migration |
-| Current Plan | 1/1 complete |
-| Status | Complete |
-| Progress | 10/25 requirements complete |
+Phase: 1 of 4 (Live2D 核心渲染)
+Plan: 0 of 3 in current phase
+Status: Ready to plan
+Last activity: 2026-05-12 — Roadmap created for Milestone v3.0
 
-### Phase Snapshot
-
-| Phase | Status | Requirements | Ready For |
-|-------|--------|-------------|-----------|
-| 1 — Foundation | Complete | FND-01~05 (06 deferred) | Verifying |
-| 2 — TTS Engine | **Complete** | TTS-01~05 ✅ | Verified |
-| 3 — HTTP Adapter | **Complete** | ADP-01~02 ✅ | Verified |
-| 4 — Model Management | **Complete** | MOD-01~02 ✅ | Verified |
-| 5 — AI Planner | Not started | AI-01~02 | Blocked by Phase 4 |
-| 6 — Frontend IPC Migration | **Complete** | IPC-01~03 ✅ | Verified |
-| 7 — Distribution | **Complete** ✅ | DST-01~04 ✅ | Verified |
-| 8 — Cleanup | Not started | CLN-01 | Ready to plan |
-
----
+Progress: [                    ] 0%
 
 ## Performance Metrics
 
-| Metric | Current | Target |
-|--------|---------|--------|
-| Requirements mapped | 25/25 ✓ | 100% |
-| Requirements complete | 9/25 | 36% |
-| Phases defined | 8 | 8 |
-| Phases complete | 7/8 | 87% |
-| Electron IPC files removed | 2 (preload.ts + ipc.ts) | 0 remaining |
-| Frontend Electron deps removed | 3 (electron, electron-log, electron-builder) | 0 |
-| vite build | Pass ✓ | 0 errors |
+**Velocity:**
+- Total plans completed: 0
+- Average duration: N/A
+- Total execution time: 0 hours
 
----
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| 1. Live2D 核心渲染 | 0/3 | - | - |
+| 2. 动画与交互 | 0/3 | - | - |
+| 3. 模型管理 | 0/2 | - | - |
+| 4. 清理收尾 | 0/3 | - | - |
+
+**Recent Trend:** N/A
+
+*Updated after each plan completion*
 
 ## Accumulated Context
 
-### Key Decisions
+### Decisions
 
 | # | Decision | Rationale |
 |---|----------|-----------|
-| D-01 | 8-phase structure with parallelizable Phases 2-4 | TTS/Adapter/Model have no interdependencies; parallel execution possible |
-| D-02 | CI/CD deferred from Phase 1 | User decision — Phase 1 focuses on local dev only |
-| D-03 | FND-06 moved back to later phase | CI/CD will be added in a future phase |
-| D-04 | DST-01 (updater UI) and signing separate from CLN-01 | Cleanup is structural (remove Electron); distribution is additive (build artifacts) |
-| D-05 | Phase 6 depends on Phases 2-5 | Frontend adapter can't be E2E tested without all Rust backends complete |
-| D-06 | Horizontal layers approach | Build complete backend layers first, connect frontend at end |
+| D-01 | PetRenderer 接口复用 | Live2DRenderer 实现已有 PetRenderer 接口，保持事件管线不变 |
+| D-02 | 仅更换渲染层 | TTS/Adapter/AI/Tray/Window 等 Rust 后端全部不动 |
+| D-03 | 四阶段水平分层 | 核心渲染 → 动画 → 模型 → 清理，依次递进 |
+| D-04 | 全量替换，不并行保留 | 移除所有 Rive 代码，单一 Live2D 引擎 |
 
-### Open Questions
+### Pending Todos
 
-| # | Question | Raised In |
-|---|----------|-----------|
-| Q-01 | Windows SAPI TTS — exact PowerShell command syntax unverified | Research Gap |
-| Q-02 | Linux espeak-ng availability in CI runner (Ubuntu) | Research Gap |
-| Q-03 | Tauri Channel binary throughput ceiling (Uint8Array size limits for audio) | Research Gap |
+None yet.
 
-### Dependencies
+### Blockers/Concerns
 
-- Phases 2, 3, 4 can execute in parallel after Phase 1
-- Phase 5 must wait for Phase 4 (Model Management)
-- Phase 6 is the convergence point — all Rust backends must be complete
-- Phase 7 requires all frontend IPC working for update UI
-- Phase 8 is the final capstone
+| # | Issue | Affects |
+|---|-------|---------|
+| B-01 | Live2D Cubism 5 Web SDK 的 ESM 导入方案需验证（Cubism 5 的 npm 包或 CDN 动态加载） | Phase 1 |
+| B-02 | WebGL 上下文在 Tauri WebView 中的兼容性未验证 | Phase 1 |
+| B-03 | .moc3 模型资源（内建模型）需要确认是否存在或需要重新准备 | Phase 1 |
 
----
+## Deferred Items
+
+| Category | Item | Status | Deferred At |
+|----------|------|--------|-------------|
+| — | — | — | — |
 
 ## Session Continuity
 
-### Last Session
+Last session: 2026-05-12
+Stopped at: Roadmap created for Milestone v3.0
+Resume file: None
 
-- Phase 6 (Frontend IPC Migration) execution completed
-- 6 commits on branch `phase-03-http-adapter`
-- 3 Electron files removed: preload.ts, ipc.ts, tts-test.ts
-- 3 Electron dependencies removed from package.json
-- 3 requirements satisfied (IPC-01, IPC-02, IPC-03)
-- 0 deviations — plan executed exactly as specified
-- tauri-adapter.ts and tauri-types.ts already existed (from earlier phases)
-- All frontend components confirmed to use @tauri-apps/api via tauri-adapter.ts
-- vite build passes with 56 modules, 0 errors
-- VERIFICATION.md created with full E2E checklist
-
-### Next Action
-
-Proceed to Phase 7: Distribution (updater, signing, .dmg/.msi/.AppImage).
+### Phase Sequence
 
 ```
-Phase 1: Foundation → cargo tauri dev, frameless window, tray, logging, single instance (CI/CD deferred) ✅
-Phase 2: TTS → system/local/cloud providers, queue, Channel streaming ✅
-Phase 3: Adapter → axum :18765, graceful shutdown ✅
-Phase 4: Model → import, walkdir scan, registry
-Phase 5: AI → reqwest OpenAI, function calling, rule/ai/hybrid modes
-Phase 6: IPC → tauri-adapter.ts, migrate components, remove preload ✅
-Phase 7: Distribution → updater, signing, .dmg/.msi/.AppImage
-Phase 8: Cleanup → remove all Electron/Node.js
+Phase 1: Live2D 核心渲染 → Cubism SDK + Live2DRenderer + 动作映射
+Phase 2: 动画与交互 → TTS 唇形同步 + 鼠标跟随 + 空闲动画
+Phase 3: 模型管理 → .moc3 导入 + models.json 更新
+Phase 4: 清理收尾 → 移除 Rive + 更新文档
 ```
-
----
-
-*Last updated: 2026-05-11 after Phase 6 Frontend IPC Migration execution*
