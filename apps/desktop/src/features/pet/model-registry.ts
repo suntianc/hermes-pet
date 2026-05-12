@@ -1,6 +1,7 @@
 import { petModel } from '../../tauri-adapter';
 import type { ModelConfigDTO } from '../../tauri-types';
 
+/** 模型格式类型。'live2d' 为主流格式，'rive' 保留用于向后兼容旧导入模型 */
 export type ModelType = 'rive' | 'live2d';
 
 /** Live2D 模型特定元数据 */
