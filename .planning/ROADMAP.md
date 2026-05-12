@@ -25,13 +25,12 @@
   3. Live2DRenderer 的 playAction() 驱动对应 Live2D Motion 播放（如 thinking → 对应 Motion 组）
   4. 无对应动作映射时自动 fallback 到 idle motion，不会黑屏或报错
   5. 模型销毁（destroy）和重建不泄漏 WebGL 资源
-**Plans**: 3 plans
-**UI hint**: yes
+**Plans**: 3 plans ✓
 
 Plans:
-- [ ] 01-01: Cubism 5 WebGL SDK 集成 — 动态加载、WebGL 上下文初始化、渲染循环
-- [ ] 01-02: Live2DRenderer 实现 — loadModel、playAction、setSpeaking、lookAt、resize、destroy
-- [ ] 01-03: 动作映射系统 — 10 种动作状态 → Live2D Motion 组映射、fallback 机制
+- [x] 01-01-PLAN.md — Cubism 5 WebGL SDK 集成 — SDK 下载部署、Vite/TS 别名、Core 加载、WebGL 上下文工具
+- [x] 01-02-PLAN.md — Live2DRenderer 实现 — PetRenderer 接口全实现、PetStage 集成替换 RiveRenderer
+- [x] 01-03-PLAN.md — 动作映射系统 — 10 种状态 → Motion 组映射表、resolveAction 解析链、Idle fallback
 
 ### Phase 2: 动画与交互
 **Goal**: 宠物具备完整的动画交互能力（唇形同步、鼠标跟随、空闲动画循环）
@@ -89,7 +88,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Live2D 核心渲染 | 0/3 | Not started | - |
+| 1. Live2D 核心渲染 | 3/3 | Planned | - |
 | 2. 动画与交互 | 0/3 | Not started | - |
 | 3. 模型管理 | 0/2 | Not started | - |
 | 4. 清理收尾 | 0/3 | Not started | - |
