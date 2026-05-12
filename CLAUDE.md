@@ -13,7 +13,7 @@ This project uses Get Shit Done (GSD) workflow for structured planning and execu
 - `.planning/ROADMAP.md` — Execution plan (Milestone 2: 8 phases)
 - `.planning/STATE.md` — Current project state
 - `.planning/codebase/` — Codebase analysis (7 documents)
-- `.planning/research/` — Rive integration research
+- `.planning/research/` — Live2D Cubism integration research
 - `.planning/research/milestone2/` — Tauri 2 + Rust migration research
 
 **Workflow:** `/gsd-plan-phase N` → `/gsd-discuss-phase N` → `/gsd-execute-phase N` → `/gsd-verify-work`
@@ -25,7 +25,7 @@ This project uses Get Shit Done (GSD) workflow for structured planning and execu
 
 ```
 hermes-pet/
-├── apps/desktop/              ← Tauri 2 desktop app (Rust + React + Rive)
+├── apps/desktop/              ← Tauri 2 desktop app (Rust + React + Live2D Cubism 5)
 │   └── src-tauri/             ← Rust backend (Tauri 2 commands, state, plugins)
 │       ├── src/               ← Rust source: TTS, Adapter, Model, AI Planner, Commands
 │       ├── Cargo.toml         ← Rust dependencies
@@ -75,7 +75,7 @@ curl http://localhost:18765/adapter/capabilities
 
 ## Architecture Overview
 
-**Tauri 2 desktop app** (Rust + React + Rive). GitHub: `suntianc/ViviPet`.
+**Tauri 2 desktop app** (Rust + React + Live2D Cubism 5 WebGL). GitHub: `suntianc/ViviPet`.
 
 ### 1. Rust Backend (`apps/desktop/src-tauri/src/`)
 - **`main.rs`** — Entry point: Tauri builder, plugin registration, command registration
@@ -89,13 +89,13 @@ curl http://localhost:18765/adapter/capabilities
   - `providers/local.rs` — HTTP streaming to local TTS service
   - `providers/cloud.rs` — OpenAI / ElevenLabs / Azure / custom API streaming
 - **`adapter.rs`** — Embedded axum HTTP server on port 18765 with graceful shutdown
-- **`model.rs`** — .riv file import, directory scanning, model registry
+- **`model.rs`** — 模型文件导入（.moc3 / .model3.json）、目录扫描、模型注册表
 - **`ai_planner.rs`** — OpenAI client with function calling (rule/ai/hybrid modes)
 - **`commands.rs`** — Tauri commands exposed to frontend via `@tauri-apps/api`
 
 ### 2. React Renderer (`apps/desktop/src/`)
 - **`tauri-adapter.ts`** — Abstraction layer wrapping `@tauri-apps/api` invoke/events, mirrors old `window.electronAPI` interface
-- `main.tsx` — Bootstrap: dynamically loads Rive WASM → renders `<App />`
+- `main.tsx` — Bootstrap: dynamically loads Live2D Cubism Core WASM → renders `<App />`
 - `App.tsx` — Root component: model loading, IPC routing, TTS vs bubble decision, applies Adapter pet events
 - `components/PetStage.tsx` — Canvas container, PetRenderer lifecycle, mouse tracking/drag/click, lip sync mouth animation via isSpeaking + ttsAmplitude
 - `components/SpeechBubble.tsx` — Inline text bubble above pet, supports `timed` and `tts-sync` modes
@@ -104,26 +104,24 @@ curl http://localhost:18765/adapter/capabilities
 - `features/pet-events/` — Renderer-side Adapter event schema, behavior planner, session manager
 - `features/pet/model-registry.ts` — Model config types, `loadModelConfigs()` (merges built-in models.json + user models via IPC)
 
-### 3. Rive Rendering (`src/features/pet/`)
-- `@rive-app/canvas` (npm package, v2.37+) — Rive renderer engine
-- Rive WASM loaded dynamically in `main.tsx`
+### 3. Live2D Rendering (`src/features/pet/`)
+- **Live2D Cubism 5 WebGL SDK** — Core rendering engine, dynamically loaded via `live2dcubismcore.min.js`
+- Cubism WASM loaded dynamically in `main.tsx`
 - `PetRenderer.ts` — Renderer abstraction interface (loadModel, playAction, setSpeaking, lookAt, resize, etc.)
-- `RiveRenderer.ts` — Rive implementation: loads `.riv` files, manages state machine inputs, WebGL render loop
-- `rive-inputs.ts` — State machine input constants and state value definitions
+- `Live2DRenderer.ts` — Live2D implementation: loads `.moc3` models, manages CubismUserModel, WebGL render loop, motion playback
+- `live2d-action-map.ts` — Action name → Live2D Motion group mapping, Idle fallback chain
 
-**Rive State Machine Inputs** (defined in `rive-inputs.ts`):
-| Input | Type | Purpose |
-|-------|------|---------|
-| `state` | Number | Animation state index (0=idle, 1=thinking, 2=speaking, 3=happy, 4=error, 5=searching, 6=coding, 7=terminal, 8=confused, 9=angry) |
-| `blink` | Trigger | Eye blink trigger |
-| `breathe` | Trigger | Breathing animation trigger |
-| `mouth_open` | Number | Lip sync amplitude (0-1) |
-| `look_x` | Number | Horizontal eye tracking (-1 to 1) |
-| `look_y` | Number | Vertical eye tracking (-1 to 1) |
+**Motion resolution chain**: Manual override (ModelConfig.actions) → ACTION_MOTION_MAP preset → capitalize match → raw name match → Idle fallback. Every action resolves through `resolveAction()` with `clearIdleTimer()` to prevent cancellation conflicts.
 
-**Action resolution chain**: Manual override (ModelConfig.actions) → auto-detect state by action name → Idle fallback. Every action starts with `forceResetPose()` to clear parameters.
+**Key Live2D parameters** (Cubism model Params, set per-frame in startLoop):
+| Parameter | Source | Purpose |
+|-----------|--------|---------|
+| ParamMouthOpenY | RMS amplitude (smoothed) | Lip sync |
+| ParamAngleX / ParamAngleY | Mouse position (lerp) | Eye tracking / head follow |
+| CubismBreath | Built-in framework | Breathing animation |
+| CubismEyeBlink | Built-in framework | Automatic eye blinking |
 
-**Renderer abstraction**: `PetRenderer` interface with `RiveRenderer` implementation; `PetRendererType` also defines `spine`, `gif`, `vrm` for future renderer swaps.
+**Renderer abstraction**: `PetRenderer` interface with `Live2DRenderer` implementation; `PetRendererType` also defines `spine`, `gif`, `vrm` for future renderer swaps.
 
 ## IPC Model (Tauri Commands + Events)
 
@@ -151,7 +149,7 @@ External agent hook (curl POST /adapter)
   → applyPetStateEvent(event)             ← animation state
   → if event.text/message → handleSpeech(text)
   → petStore.setAction(type) → actionRevision++
-  → PetStage useEffect → RiveRenderer.playAction()
+  → PetStage useEffect → Live2DRenderer.playAction()
   → forceResetPose() → set SM state input → scheduleIdle()
 
 TTS flow:
@@ -159,7 +157,7 @@ TTS flow:
   → tts enabled → invoke("tts_speak", { text, options })
   → Rust TTS manager queues → provider streams → Channel send audio chunks
   → frontend Channel listener → StreamingAudioPlayer → Web Audio API playback
-  → real-time RMS → PetStore → RiveRenderer mouth animation (mouth_open input)
+  → real-time RMS → PetStore → Live2DRenderer mouth animation (ParamMouthOpenY)
   → tts disabled / error → SpeechBubble fallback
 ```
 
@@ -169,20 +167,20 @@ TTS flow:
 ```
 apps/desktop/public/
 ├── assets/models/models.json ← Model registry (runtime JSON)
-└── models/<ModelName>/       ← Built-in models (.riv files)
+└── models/<ModelName>/       ← Built-in models (.moc3 files)
 ```
 
 ### Loading (dual-tier)
 1. **Primary**: `public/assets/models/models.json` at runtime via `fetch()`
 2. **Fallback**: `FALLBACK_MODELS` in `model-registry.ts`
-3. **User models**: Merged via `invoke("list_user_models")` from `userData/models/`
+3. **User models**: Merged via `invoke("model_list")` from `userData/models/`
 
 ### Action Resolution
 ```
 playAction("thinking")
   → ModelConfig.actions?.thinking (manual override, models.json)
-  → resolveAction: match "thinking" state → set Rive SM state input
-  → fallback: "idle" state
+  → resolveAction: match "thinking" state → set Live2D Motion group
+  → fallback: "idle" motion
   → forceResetPose() before every action
 ```
 
@@ -221,7 +219,7 @@ Internal actions: `idle`, `thinking`, `speaking`, `happy`, `success`, `error`, `
 | `apps/desktop/src-tauri/src/commands.rs` | All Tauri commands exposed to frontend |
 | `apps/desktop/src-tauri/src/tts/` | Rust TTS engine: manager, config, 3 providers |
 | `apps/desktop/src-tauri/src/adapter.rs` | Embedded axum HTTP server (:18765) |
-| `apps/desktop/src-tauri/src/model.rs` | .riv file import, directory scanning, registry |
+| `apps/desktop/src-tauri/src/model.rs` | .moc3 / .model3.json 文件导入、目录扫描、模型注册表 |
 | `apps/desktop/src-tauri/src/ai_planner.rs` | OpenAI function calling, rule/ai/hybrid modes |
 | `apps/desktop/src-tauri/src/tray.rs` | System tray with dynamic model list |
 | `apps/desktop/src-tauri/src/window.rs` | Frameless, transparent, always-on-top window |
@@ -232,8 +230,8 @@ Internal actions: `idle`, `thinking`, `speaking`, `happy`, `success`, `error`, `
 | `apps/desktop/src/components/PetStage.tsx` | Canvas, mouse events, renderer lifecycle, eye tracking, lip sync |
 | `apps/desktop/src/components/SpeechBubble.tsx` | Speech bubble with timed/tts-sync modes |
 | `apps/desktop/src/stores/pet-store.ts` | State management (actions, bubbles, TTS state, lip sync amplitude) |
-| `apps/desktop/src/features/pet/RiveRenderer.ts` | Rive engine: loads .riv, SM input management, lip sync, mouse follow |
-| `apps/desktop/src/features/pet/rive-inputs.ts` | Rive state machine input constants and RiveStateValue type |
+| `apps/desktop/src/features/pet/Live2DRenderer.ts` | Live2D engine: loads .moc3, CubismUserModel, WebGL render loop, motion playback |
+| `apps/desktop/src/features/pet/live2d-action-map.ts` | Live2D action-to-motion mapping and resolveAction function |
 | `apps/desktop/src/features/pet/PetRenderer.ts` | Renderer abstraction interface |
 | `apps/desktop/src/features/pet/model-registry.ts` | Model config types, merging built-in + user models |
 | `apps/desktop/vite.config.mts` | Build config, aliases (`@`, `@pet-action-dsl`, `@shared`), publicDir |
