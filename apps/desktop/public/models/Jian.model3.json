@@ -1,0 +1,104 @@
+{
+  "Version": 3,
+  "FileReferences": {
+    "Moc": "Jian.moc3",
+    "Textures": [
+      "Jian.8192/texture_00.png"
+    ],
+    "Physics": "Jian.physics3.json",
+    "DisplayInfo": "Jian.cdi3.json",
+    "Expressions": [
+      {
+        "Name": "smile",
+        "File": "exp/smile.exp3.json"
+      },
+      {
+        "Name": "angry",
+        "File": "exp/angry.exp3.json"
+      },
+      {
+        "Name": "shy",
+        "File": "exp/shy.exp3.json"
+      },
+      {
+        "Name": "surprised",
+        "File": "exp/surprised.exp3.json"
+      },
+      {
+        "Name": "sad",
+        "File": "exp/sad.exp3.json"
+      }
+    ],
+    "Motions": {
+      "Idle": [
+        {
+          "File": "motions/idle.motion3.json",
+          "FadeInTime": 0.5,
+          "FadeOutTime": 0.5
+        }
+      ],
+      "Greeting": [
+        {
+          "File": "motions/greeting.motion3.json",
+          "FadeInTime": 0.3,
+          "FadeOutTime": 0.5
+        }
+      ],
+      "Happy": [
+        {
+          "File": "motions/happy.motion3.json",
+          "FadeInTime": 0.3,
+          "FadeOutTime": 0.5
+        }
+      ],
+      "Shy": [
+        {
+          "File": "motions/shy.motion3.json",
+          "FadeInTime": 0.3,
+          "FadeOutTime": 0.5
+        }
+      ],
+      "Angry": [
+        {
+          "File": "motions/angry.motion3.json",
+          "FadeInTime": 0.2,
+          "FadeOutTime": 0.5
+        }
+      ],
+      "Surprised": [
+        {
+          "File": "motions/surprised.motion3.json",
+          "FadeInTime": 0.1,
+          "FadeOutTime": 0.5
+        }
+      ]
+    }
+  },
+  "Groups": [
+    {
+      "Target": "Parameter",
+      "Name": "LipSync",
+      "Ids": [
+        "ParamMouthOpenY"
+      ]
+    },
+    {
+      "Target": "Parameter",
+      "Name": "EyeBlink",
+      "Ids": [
+        "ParamEyeLOpen",
+        "ParamEyeROpen"
+      ]
+    }
+  ],
+  "HitAreas": [
+    {
+      "Id": "HitAreaBody",
+      "Name": "Body"
+    },
+    {
+      "Id": "HitAreaHead",
+      "Name": "Head"
+    }
+  ]
+}
