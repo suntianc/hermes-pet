@@ -45,9 +45,9 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 02-01: TTS 唇形同步 — mouthOpen 参数驱动、StreamingAudioPlayer 振幅桥接
-- [ ] 02-02: 鼠标跟随 — look_x/look_y 事件 → Live2D 参数映射
-- [ ] 02-03: 空闲动画循环 — 呼吸 + 眨眼自动触发、400ms 超时 idle 回归
+- [ ] 02-01-PLAN.md — TTS 唇形同步 — setSpeaking 增强、RMS 平滑/削波/迟滞、updateLipSync 每帧循环
+- [ ] 02-02-PLAN.md — 鼠标跟随 — lookAt 实现、ParamAngleX/Y 映射、lerp 平滑
+- [ ] 02-03-PLAN.md — 空闲动画 — CubismBreath + CubismEyeBlink 初始化、deltaTime 帧更新
 
 ### Phase 3: 模型管理
 **Goal**: 用户可导入和切换 Live2D 模型，管理系统适配 .moc3 格式
