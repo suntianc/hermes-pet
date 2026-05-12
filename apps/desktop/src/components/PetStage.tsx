@@ -103,6 +103,7 @@ export const PetStage: React.FC<PetStageProps> = ({
         container.appendChild(renderer.view);
         console.log('[PetStage] Live2D canvas appended to container');
       }
+      setModelLoaded(true);
     };
 
     initRenderer().catch((err) => {
