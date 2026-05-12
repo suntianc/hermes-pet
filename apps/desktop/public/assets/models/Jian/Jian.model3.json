@@ -3,7 +3,7 @@
   "FileReferences": {
     "Moc": "Jian.moc3",
     "Textures": [
-      "Jian.8192/texture_00.png"
+      "texture_00.png"
     ],
     "Physics": "Jian.physics3.json",
     "DisplayInfo": "Jian.cdi3.json",
