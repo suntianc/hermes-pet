@@ -117,10 +117,10 @@ export class Live2DRenderer implements PetRenderer {
     const mocBuf = await fetchArrayBuffer(`${this.modelDir}${mocFileName}`);
     const userModel = new CubismUserModel();
     userModel.loadModel(mocBuf);
+    userModel.createRenderer(this.canvas.width, this.canvas.height);
     this.userModel = userModel;
 
     const renderer = userModel.getRenderer();
-    renderer.initialize(userModel.getModel());
     for (let i = 0; i < this.modelSetting.getTextureCount(); i++) {
       const texFile = this.modelSetting.getTextureFileName(i);
       const img = await loadImage(`${this.modelDir}${texFile}`);
