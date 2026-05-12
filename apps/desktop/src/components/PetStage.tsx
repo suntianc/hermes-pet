@@ -408,7 +408,7 @@ export const PetStage: React.FC<PetStageProps> = ({
     >
       <div
         ref={canvasContainerRef}
-        className="rive-container"
+        className="live2d-container"
         style={{
           position: 'absolute',
           right: petPosition.right,

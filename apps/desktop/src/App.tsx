@@ -422,7 +422,7 @@ const App: React.FC = () => {
     const handlePointerMove = (event: PointerEvent) => {
       const panel = settingsPanelRef.current;
       const insideSettings = Boolean(panel && panel.contains(event.target as Node));
-      const onPet = document.elementFromPoint(event.clientX, event.clientY)?.closest?.('.rive-container');
+      const onPet = document.elementFromPoint(event.clientX, event.clientY)?.closest?.('.live2d-container');
       const shouldPassThrough = !insideSettings && !onPet;
       document.documentElement.dataset.mousePassthrough = String(shouldPassThrough);
       petWindow.setIgnoreMouseEvents(shouldPassThrough).catch(() => {});

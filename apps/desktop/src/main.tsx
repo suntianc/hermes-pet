@@ -46,15 +46,9 @@ async function loadScript(src: string): Promise<void> {
 }
 
 async function bootstrap(): Promise<void> {
-  const baseUrl = window.location.href;
-
   // Load Live2D Cubism Core WASM
   await loadScript('./live2dcubismcore.min.js');
   console.log('[Cubism] Core WASM loaded');
-
-  if (baseUrl.startsWith('http')) {
-    console.log('[Rive] Using auto WASM (dev mode)');
-  }
 
   await import('./styles.css');
   const { default: App } = await import('./App');
