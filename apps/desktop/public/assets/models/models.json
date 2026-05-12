@@ -1,3 +1,28 @@
 {
-  "models": []
+  "models": [
+    {
+      "id": "haru",
+      "name": "Haru (Live2D)",
+      "path": "assets/models/haru/haru.model3.json",
+      "type": "live2d",
+      "window": { "width": 520, "height": 760 },
+      "canvas": { "width": 750, "height": 700 },
+      "capabilities": {
+        "expressions": {
+          "angry": null,
+          "relax": null,
+          "smile": null,
+          "sad": null
+        }
+      }
+    },
+    {
+      "id": "mao",
+      "name": "Mao (Live2D)",
+      "path": "assets/models/mao/mao.model3.json",
+      "type": "live2d",
+      "window": { "width": 520, "height": 760 },
+      "canvas": { "width": 750, "height": 700 }
+    }
+  ]
 }
