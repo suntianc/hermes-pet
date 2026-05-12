@@ -2,6 +2,7 @@ use std::sync::Mutex;
 
 use tauri::{AppHandle, Emitter, Manager};
 use tauri::ipc::Channel;
+use tauri_plugin_store::StoreExt;
 
 use crate::error::AppError;
 use crate::state::AppState;
@@ -106,6 +107,17 @@ pub fn tts_get_config(app: AppHandle) -> Result<TTSConfig, AppError> {
 pub fn tts_set_config(app: AppHandle, config: TTSConfig) -> Result<(), AppError> {
     let source = config.source.clone();
     let enabled = config.enabled;
+
+    let store = app
+        .store("settings.json")
+        .map_err(|e| AppError::Tts(format!("Store error: {e}")))?;
+    let value = serde_json::to_value(&config)
+        .map_err(|e| AppError::Tts(format!("Config serialization error: {e}")))?;
+    store.set("tts_config", value);
+    if let Err(e) = store.save() {
+        tracing::warn!("[TTS] Could not save config to store: {e}");
+    }
+
     let state = app.state::<Mutex<AppState>>();
     let mut guard = state.lock().map_err(|e| AppError::Tts(format!("Lock error: {e}")))?;
     guard.tts_config = config.clone();

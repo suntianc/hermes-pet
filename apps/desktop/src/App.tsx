@@ -177,10 +177,19 @@ const App: React.FC = () => {
   // ---- TTS 配置快照（启动时异步加载）----
   const [ttsConfig, setTTSConfig] = useState<TTSConfigSnapshot>({});
   const updateTTSConfigSnapshot = useCallback((cfg: any) => {
+    const source =
+      typeof cfg?.source === 'string'
+        ? cfg.source.toLowerCase()
+        : undefined;
+    const fallbackToBubble =
+      cfg?.fallback_to_bubble !== undefined
+        ? cfg.fallback_to_bubble !== false
+        : cfg?.fallbackToBubble !== false;
+
     setTTSConfig({
       enabled: cfg?.enabled === true,
-      source: cfg?.source,
-      fallbackToBubble: cfg?.fallbackToBubble !== false,
+      source,
+      fallbackToBubble,
     });
   }, []);
 
@@ -350,7 +359,16 @@ const App: React.FC = () => {
     if (!aiConfig) return;
     setAIConfigStatus('Testing...');
     try {
-      await petAI.testConnection();
+      const configOverride: AiConfigDTO = {
+        enabled: aiConfig.enabled,
+        mode: aiConfig.mode,
+        base_url: aiConfig.baseUrl,
+        api_key: aiConfig.apiKey,
+        model: aiConfig.model,
+        timeout_ms: aiConfig.timeoutMs,
+        fallback_to_rule: aiConfig.fallbackToRule,
+      };
+      await petAI.testConnection(configOverride);
       setAIConfigStatus('Connection OK');
     } catch (err) {
       setAIConfigStatus(`Failed: ${err instanceof Error ? err.message : 'Unknown error'}`);

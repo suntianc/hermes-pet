@@ -4,9 +4,9 @@
     <img alt="ViviPet" src="source/imgs/vivi-pet-banner.png" width="1200">
   </picture>
   <h1 align="center">ViviPet</h1>
-  <p align="center"><strong>AI-driven Live2D Desktop Companion</strong></p>
+  <p align="center"><strong>AI-driven Desktop Companion</strong></p>
   <p align="center">
-    <code>Give your AI Agent a Live2D body</code>
+    <code>Give your AI Agent a visible desktop presence</code>
   </p>
 
   <p align="center">
@@ -31,11 +31,10 @@
 <br />
 
 <p align="center">
-    <a href="#-features">English</a> |
-    <a href="source/docs/README_ZH.md">简体中文</a>
+    <a href="#-features">English</a>
 </p>
 
-> **ViviPet** gives your AI agent a visible, expressive Live2D body on the desktop — triggered by a simple action API. Every thought, speech, and emotion becomes a lively visual and audio response.
+> **ViviPet** gives your AI agent a visible, expressive desktop presence — triggered by a simple action API. Thoughts, speech, and task state become lively visual and audio feedback.
 
 ---
 
@@ -50,13 +49,13 @@ https://github.com/user-attachments/assets/6f3d3bb6-32da-401b-85fd-4722f299a55a
 
 | Feature | Description |
 |---|---|
-| **Rich Expression System** | Powered by Live2D Cubism 5 — thinking, speaking, happy, confused, angry, and more |
+| **Rich Expression System** | Thinking, speaking, happy, confused, angry, and more |
 | **External Agent API** | Built-in Agent Adapter (`:18765`) — any agent hook can control the pet with semantic events |
 | **Multi-Source TTS** | System TTS (macOS `say`) · Local service · Cloud API |
 | **Mouse Awareness** | Eyes follow your cursor — it always knows where you're looking |
-| **Custom Model Support** | Import your own Live2D models via the tray menu |
+| **Custom Model Support** | Runtime model/pet asset support is being refactored during the Rust/Tauri migration |
 | **Lightweight** | Frameless, transparent, always-on-top — sits quietly in the corner |
-| **Flexible Integration** | Built-in Agent Adapter · Electron IPC — bring your own agent |
+| **Flexible Integration** | Built-in Agent Adapter · Tauri desktop app |
 
 </div>
 
@@ -88,7 +87,7 @@ curl -X POST http://localhost:18765/adapter \
 
 `tts` is a per-event switch. Use `tts: true` or `tts: { "enabled": true, ... }` to request voice. Use `tts: false` or omit it to show text in the speech bubble. ViviPet still checks the current TTS config first; if TTS is disabled or the provider fails, it falls back to the bubble.
 
-The Adapter exposes semantic phases instead of Live2D motion names, so model-specific actions remain an internal ViviPet detail.
+The Adapter exposes semantic phases instead of renderer-specific motion names, so model-specific actions remain an internal ViviPet detail.
 
 ### Integration Examples
 
@@ -148,12 +147,9 @@ ViviPet features a flexible TTS system with **three provider types** and **three
 
 ---
 
-## Adding a Live2D Model (feature not fully tested)
+## Model Pipeline
 
-1. **Prepare** a Live2D Cubism 5 model (`.model3.json`, `.moc3`, textures, physics, motions) and package it as a zip
-2. **Import** via the tray menu → Import Model
-
-> Full model integration spec: [specification/live2d-model-integration-spec.md](source/docs/specification/live2d-model-integration-spec.md)
+The model/renderer pipeline is being actively refactored as part of the Rust/Tauri migration. Older Live2D- and Rive-specific integration notes have been removed while the new architecture settles.
 
 ---
 
@@ -161,7 +157,7 @@ ViviPet features a flexible TTS system with **three provider types** and **three
 
 All contributions are welcome! Whether it's:
 
-- **New Live2D models** — Share your character creations
+- **Pet renderer / model work** — Help shape the next model pipeline
 - **Bug fixes** — Found an issue? Open a PR
 - **Feature ideas** — New actions, integrations, or TTS providers
 - **Documentation** — Help others get started
@@ -178,17 +174,16 @@ Feel free to submit a [Pull Request](https://github.com/suntianc/ViviPet/pulls) 
 
 ## Acknowledgements
 
-Special thanks to **@bailyovo** for providing free Live2D models. Visit her <a href="https://bailyovo.booth.pm">Booth store</a>.
+Special thanks to everyone who helped shape the early pet prototypes and interaction ideas.
 
 <div align="center">
   <p>
     <sub>
-      Made with 💖 and Live2D Cubism 5 ·
-      <a href="https://www.live2d.com/">Live2D Inc.</a>
+      Made with 💖 for expressive AI companions
     </sub>
   </p>
   <p>
-    <sub>Built with Electron · React · TypeScript · Vite · WebGL</sub>
+    <sub>Built with Tauri · Rust · React · TypeScript · Vite</sub>
   </p>
   <br />
   <p>
