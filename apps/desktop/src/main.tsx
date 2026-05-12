@@ -33,8 +33,25 @@ async function testTauriIPC(): Promise<void> {
   }
 }
 
+async function loadScript(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing) { resolve(); return; }
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+    document.head.appendChild(script);
+  });
+}
+
 async function bootstrap(): Promise<void> {
   const baseUrl = window.location.href;
+
+  // Load Live2D Cubism Core WASM
+  await loadScript('./live2dcubismcore.min.js');
+  console.log('[Cubism] Core WASM loaded');
+
   if (baseUrl.startsWith('http')) {
     console.log('[Rive] Using auto WASM (dev mode)');
   }

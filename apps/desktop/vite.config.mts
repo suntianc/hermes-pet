@@ -22,6 +22,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
+      '@framework': path.resolve(__dirname, 'src/vendor/cubism/Framework/src'),
       '@pet-action-dsl': path.resolve(__dirname, '../../packages/pet-action-dsl/src'),
       '@shared': path.resolve(__dirname, '../../packages/shared/src'),
     },
