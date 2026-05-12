@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { PlayActionOptions } from '../features/pet/PetRenderer';
-import { RiveRenderer } from '../features/pet/RiveRenderer';
+import { Live2DRenderer } from '../features/pet/Live2DRenderer';
 import { ModelConfig } from '../features/pet/model-registry';
 import { petWindow, getLastMousePosition } from '../tauri-adapter';
 
@@ -46,7 +46,7 @@ export const PetStage: React.FC<PetStageProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
-  const rendererRef = useRef<RiveRenderer | null>(null);
+  const rendererRef = useRef<Live2DRenderer | null>(null);
   const mousePassthroughRef = useRef<boolean | null>(null);
   const isDraggingRef = useRef(false);
   const prevModelIndex = useRef<number | null>(null);
@@ -88,8 +88,8 @@ export const PetStage: React.FC<PetStageProps> = ({
     let cancelled = false;
 
     const initRenderer = async () => {
-      console.log('[PetStage] Initializing RiveRenderer...');
-      const renderer = new RiveRenderer();
+      console.log('[PetStage] Initializing Live2DRenderer...');
+      const renderer = new Live2DRenderer();
       rendererRef.current = renderer;
 
       const model = models[Math.min(modelIndex, models.length - 1)] ?? models[0];
@@ -100,11 +100,8 @@ export const PetStage: React.FC<PetStageProps> = ({
 
       const container = canvasContainerRef.current;
       if (container && renderer.view) {
-        container.innerHTML = '';
-        container.appendChild(renderer.backgroundCanvas ?? document.createElement('div'));
         container.appendChild(renderer.view);
-        console.log('[PetStage] Rive canvases appended to container');
-        setModelLoaded(true);
+        console.log('[PetStage] Live2D canvas appended to container');
       }
     };
 
@@ -151,7 +148,7 @@ export const PetStage: React.FC<PetStageProps> = ({
       setModelLoaded(false);
       renderer.destroy();
 
-      const newRenderer = new RiveRenderer();
+      const newRenderer = new Live2DRenderer();
       rendererRef.current = newRenderer;
       await newRenderer.loadModel(nextModel);
       if (cancelled || rendererRef.current !== newRenderer) return;
@@ -159,7 +156,6 @@ export const PetStage: React.FC<PetStageProps> = ({
       const container = canvasContainerRef.current;
       if (container && newRenderer.view) {
         container.innerHTML = '';
-        container.appendChild(newRenderer.backgroundCanvas ?? document.createElement('div'));
         container.appendChild(newRenderer.view);
       }
       setModelLoaded(true);
@@ -433,7 +429,7 @@ export const PetStage: React.FC<PetStageProps> = ({
             fontFamily: 'system-ui, sans-serif',
           }}
         >
-          {loadError ? `Rive load failed: ${loadError}` : 'Loading Rive...'}
+          {loadError ? `Live2D load failed: ${loadError}` : 'Loading Live2D...'}
         </div>
       )}
     </div>

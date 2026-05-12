@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true,
+    "rootDir": "cubism/Framework/src",
+    "outDir": "cubism/Framework/lib",
+    "skipLibCheck": true,
+    "strict": false,
+    "noEmit": false
+  },
+  "include": ["cubism/Framework/src/**/*"]
+}
